@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, Partials, Collection, Events, PermissionFlagsBits, ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Collection, Events, PermissionFlagsBits, ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readdirSync } from 'node:fs';
@@ -71,10 +71,40 @@ async function refreshTicketPanel(channelId) {
 	await channel.send({ embeds: [embed], components: [row] }).catch(() => {});
 }
 
+async function refreshStaffPanel(channelId) {
+	if (!channelId) return;
+	const channel = await client.channels.fetch(channelId).catch(() => null);
+	if (!channel || channel.type !== ChannelType.GuildText) return;
+	try {
+		const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
+		if (messages) {
+			const panelMsgs = messages.filter(m => m.author.id === client.user.id && m.components?.some(r => r.components?.some(c => c.customId === 'staff_application_select')));
+			for (const msg of panelMsgs.values()) await msg.delete().catch(() => {});
+		}
+	} catch {}
+	const PANEL_IMAGE = 'https://media.discordapp.net/attachments/822598530752315443/1434154549236732035/image.png?ex=69074c01&is=6905fa81&hm=199fe4c6bdba9de1bdc63e67dd791fa0c7af4553184353186bea2b95d375dccb&=&format=webp&quality=lossless&width=963&height=320';
+	const embed = new EmbedBuilder().setColor(0x808080).setTitle('تقديم اداره').setImage(PANEL_IMAGE);
+	const select = new StringSelectMenuBuilder()
+		.setCustomId('staff_application_select')
+		.setPlaceholder('اختر نوع التذكرة')
+		.addOptions([
+			{ label: 'تقديم اداره', value: 'staff', emoji: { id: '1386133151574654976', name: 'staff' } },
+		]);
+	const row = new ActionRowBuilder().addComponents(select);
+	await channel.send({ embeds: [embed], components: [row] }).catch(() => {});
+}
+
 client.once(Events.ClientReady, async c => {
 	console.log(`Logged in as ${c.user.tag}`);
+	
+	// تحديث جميع panels عند تشغيل البوت
 	const panelChannelId = process.env.TICKET_PANEL_CHANNEL_ID;
 	await refreshTicketPanel(panelChannelId);
+	
+	const staffPanelChannelId = '1397092707687727204';
+	await refreshStaffPanel(staffPanelChannelId);
+	
+	console.log('✅ تم تحديث جميع panels التيكيت');
 });
 
 client.on(Events.GuildMemberUpdate, (oldMember, newMember) => {
@@ -190,6 +220,138 @@ client.on(Events.InteractionCreate, async interaction => {
 			await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
 			return;
 		}
+		if (interaction.isStringSelectMenu() && interaction.customId === 'staff_application_select') {
+			if (interaction.values[0] === 'staff') {
+				const modal = new ModalBuilder()
+					.setCustomId('staff_application_modal')
+					.setTitle('تقديم اداره');
+				
+				const nameInput = new TextInputBuilder()
+					.setCustomId('staff_name')
+					.setLabel('الاسم')
+					.setStyle(TextInputStyle.Short)
+					.setRequired(true)
+					.setMaxLength(100);
+				
+				const ageInput = new TextInputBuilder()
+					.setCustomId('staff_age')
+					.setLabel('العمر')
+					.setStyle(TextInputStyle.Short)
+					.setRequired(true)
+					.setMaxLength(10);
+				
+				const countryInput = new TextInputBuilder()
+					.setCustomId('staff_country')
+					.setLabel('الدولة')
+					.setStyle(TextInputStyle.Short)
+					.setRequired(true)
+					.setMaxLength(100);
+				
+				const experienceInput = new TextInputBuilder()
+					.setCustomId('staff_experience')
+					.setLabel('خبراتك')
+					.setStyle(TextInputStyle.Paragraph)
+					.setRequired(true)
+					.setMaxLength(1000);
+				
+				// دمج جميع الأسئلة المتبقية في حقل واحد كبير
+				const otherQuestionsInput = new TextInputBuilder()
+					.setCustomId('staff_other')
+					.setLabel('ليش اخترت سيرفرنا + دورك + هل بتوضع الشعار؟')
+					.setPlaceholder('1. ليش اخترت سيرفرنا\n2. وش دورك بالاداره\n3. هل بتوضع الشعار؟ (نعم/لا)')
+					.setStyle(TextInputStyle.Paragraph)
+					.setRequired(true)
+					.setMaxLength(2000);
+				
+				const row1 = new ActionRowBuilder().addComponents(nameInput);
+				const row2 = new ActionRowBuilder().addComponents(ageInput);
+				const row3 = new ActionRowBuilder().addComponents(countryInput);
+				const row4 = new ActionRowBuilder().addComponents(experienceInput);
+				const row5 = new ActionRowBuilder().addComponents(otherQuestionsInput);
+				
+				modal.addComponents(row1, row2, row3, row4, row5);
+				await interaction.showModal(modal);
+				return;
+			}
+		}
+		if (interaction.isModalSubmit() && interaction.customId === 'staff_application_modal') {
+			const opener = interaction.user;
+			const guild = interaction.guild;
+			await interaction.deferReply({ ephemeral: true });
+			
+			const name = interaction.fields.getTextInputValue('staff_name');
+			const age = interaction.fields.getTextInputValue('staff_age');
+			const country = interaction.fields.getTextInputValue('staff_country');
+			const experience = interaction.fields.getTextInputValue('staff_experience');
+			const otherQuestions = interaction.fields.getTextInputValue('staff_other');
+			
+			// محاولة فصل الإجابات من الحقل المدمج
+			const lines = otherQuestions.split('\n').filter(l => l.trim());
+			let whyServer = otherQuestions;
+			let role = '';
+			let logo = '';
+			
+			// البحث عن الإجابات
+			if (lines.length >= 1) whyServer = lines[0].replace(/^[0-9]+\.\s*/, '').trim();
+			if (lines.length >= 2) role = lines[1].replace(/^[0-9]+\.\s*/, '').trim();
+			if (lines.length >= 3) logo = lines[2].replace(/^[0-9]+\.\s*/, '').trim();
+			
+			// إذا لم يكن هناك فواصل، نحاول البحث عن كلمات مفتاحية
+			if (!role && !logo) {
+				const logoMatch = otherQuestions.match(/شعار[؟?]?\s*[:：]?\s*(نعم|لا|yes|no)/i);
+				if (logoMatch) logo = logoMatch[1];
+				if (otherQuestions.includes('دور')) {
+					const roleMatch = otherQuestions.match(/دور[ك]?\s*[:：]?\s*([^\n]+)/i);
+					if (roleMatch) role = roleMatch[1].split(/[؟?]|شعار/i)[0].trim();
+				}
+			}
+			
+			if (!role) role = 'غير محدد';
+			if (!logo) logo = otherQuestions.match(/نعم|لا/i)?.[0] || 'غير محدد';
+			
+			const staffCategoryId = '1397022482929549333';
+			const staffViewRoleId = '1419650368610111488';
+			const channelName = `staff-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
+			const staffViewRole = guild.roles.cache.get(staffViewRoleId);
+			
+			const permissionOverwrites = [
+				{ id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
+				...(staffViewRole ? [{ id: staffViewRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : [{ id: staffViewRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }]),
+				{ id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+			];
+			
+			const ticketChannel = await guild.channels.create({
+				name: channelName,
+				type: ChannelType.GuildText,
+				parent: staffCategoryId,
+				permissionOverwrites,
+				reason: `Staff application by ${opener.tag}`,
+			});
+			
+			const applicationEmbed = new EmbedBuilder()
+				.setColor(0x5865F2)
+				.setTitle('تقديم اداره')
+				.setDescription(`**معلومات المقدم**`)
+				.addFields(
+					{ name: 'المقدم', value: `${opener}`, inline: true },
+					{ name: 'الاسم', value: name, inline: true },
+					{ name: 'العمر', value: age, inline: true },
+					{ name: 'الدولة', value: country, inline: true },
+					{ name: 'خبراتك', value: experience.length > 1024 ? experience.substring(0, 1021) + '...' : experience, inline: false },
+					{ name: 'ليش اخترت سيرفرنا بالضبط', value: whyServer.length > 1024 ? whyServer.substring(0, 1021) + '...' : whyServer, inline: false },
+					{ name: 'وش دورك بالاداره', value: role.length > 1024 ? role.substring(0, 1021) + '...' : role, inline: false },
+					{ name: 'هل بتوضع الشعار ؟', value: logo, inline: true }
+				)
+				.setImage('https://media.discordapp.net/attachments/822598530752315443/1434154549236732035/image.png?ex=69074c01&is=6905fa81&hm=199fe4c6bdba9de1bdc63e67dd791fa0c7af4553184353186bea2b95d375dccb&=&format=webp&quality=lossless&width=963&height=320')
+				.setTimestamp()
+				.setFooter({ text: `تقديم من ${opener.tag}`, iconURL: opener.displayAvatarURL() });
+			
+			const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
+			const row = new ActionRowBuilder().addComponents(closeBtn);
+			await ticketChannel.send({ content: `${opener}`, embeds: [applicationEmbed], components: [row] });
+			await interaction.editReply({ content: `تم إرسال تقديمك بنجاح: ${ticketChannel}` });
+			return;
+		}
 		if (interaction.isButton() && interaction.customId === 'ticket_close') {
 			const channel = interaction.channel;
 			const openerMention = channel?.messages?.cache?.first()?.mentions?.users?.first();
@@ -198,12 +360,90 @@ client.on(Events.InteractionCreate, async interaction => {
 			try {
 				if (openerId) {
 					const user = await interaction.client.users.fetch(openerId).catch(() => null);
-					if (user) await user.send({ content: `تم إغلاق تذكرتك في ${interaction.guild.name}. شكرًا لتواصلك.` }).catch(() => {});
+					if (user) {
+						// جمع ترانسكريبت التيكيت
+						let transcript = `📋 **ترانسكريبت التيكيت**\n`;
+						transcript += `**السيرفر:** ${interaction.guild.name}\n`;
+						transcript += `**القناة:** ${channel.name}\n`;
+						transcript += `**تاريخ الإغلاق:** ${new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })}\n`;
+						transcript += `**أغلقه:** ${interaction.user.tag}\n\n`;
+						transcript += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+						
+						try {
+							const messages = await channel.messages.fetch({ limit: 100 });
+							const sortedMessages = Array.from(messages.values()).sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+							
+							for (const msg of sortedMessages) {
+								const date = new Date(msg.createdTimestamp).toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' });
+								transcript += `**[${date}]** ${msg.author.tag} ${msg.author.bot ? '(Bot)' : ''}\n`;
+								if (msg.content) transcript += `${msg.content}\n`;
+								if (msg.attachments.size > 0) {
+									msg.attachments.forEach(att => {
+										transcript += `📎 ${att.name || 'مرفق'}: ${att.url}\n`;
+									});
+								}
+								if (msg.embeds.length > 0) {
+									msg.embeds.forEach(embed => {
+										if (embed.title) transcript += `📌 **${embed.title}**\n`;
+										if (embed.description) transcript += `${embed.description}\n`;
+										if (embed.fields && embed.fields.length > 0) {
+											embed.fields.forEach(field => {
+												transcript += `   • ${field.name}: ${field.value}\n`;
+											});
+										}
+									});
+								}
+								transcript += `\n`;
+							}
+						} catch (transcriptError) {
+							transcript += `⚠️ تعذر جمع بعض الرسائل\n`;
+						}
+						
+						transcript += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+						transcript += `✅ تم إغلاق التيكيت بنجاح\n`;
+						
+						// تقسيم الترانسكريبت إذا كان طويلاً
+						const maxLength = 1900;
+						if (transcript.length > maxLength) {
+							const parts = [];
+							let currentPart = '';
+							const lines = transcript.split('\n');
+							
+							for (const line of lines) {
+								if ((currentPart + line + '\n').length > maxLength) {
+									if (currentPart) parts.push(currentPart);
+									currentPart = line + '\n';
+								} else {
+									currentPart += line + '\n';
+								}
+							}
+							if (currentPart) parts.push(currentPart);
+							
+							for (let i = 0; i < parts.length; i++) {
+								await user.send({ 
+									content: i === 0 ? `📋 **ترانسكريبت تذكرتك في ${interaction.guild.name}**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━` : `**جزء ${i + 1}:**`,
+									embeds: [new EmbedBuilder().setDescription(parts[i]).setColor(0x5865F2).setTimestamp()]
+								}).catch(() => {});
+							}
+						} else {
+							await user.send({ 
+								embeds: [
+									new EmbedBuilder()
+										.setColor(0x5865F2)
+										.setTitle('📋 تم إغلاق تذكرتك')
+										.setDescription(`**السيرفر:** ${interaction.guild.name}\n**القناة:** ${channel.name}\n**تاريخ الإغلاق:** ${new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })}\n**أغلقه:** ${interaction.user.tag}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n${transcript}`)
+										.setTimestamp()
+										.setFooter({ text: interaction.guild.name, iconURL: interaction.guild.iconURL() })
+								]
+							}).catch(() => {});
+						}
+					}
 				}
-				await interaction.editReply({ content: 'سيتم حذف التيكيت.' });
+				await interaction.editReply({ content: '✅ سيتم حذف التيكيت.' });
 				await channel.delete().catch(() => {});
 			} catch (e) {
-				await interaction.editReply({ content: 'تعذر حذف التيكيت.' }).catch(() => {});
+				console.error('Error closing ticket:', e);
+				await interaction.editReply({ content: '❌ تعذر حذف التيكيت.' }).catch(() => {});
 			}
 			return;
 		}
