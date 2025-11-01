@@ -2,7 +2,7 @@ import { SlashCommandBuilder, ChannelType, EmbedBuilder, ActionRowBuilder, Strin
 
 const PANEL_IMAGE = 'https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933';
 const TARGET_CHANNEL_ID = '1397022592954663016';
-const ALLOWED_ROLES = ['1428103206705172673', '1418942792121585724'];
+const ALLOWED_ROLES = ['1419306155145953400', ''];
 
 export default {
 	data: new SlashCommandBuilder()
