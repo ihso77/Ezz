@@ -34,18 +34,18 @@ async function collectCommands() {
 		process.exit(1);
 	}
 
-	const commands = await collectCommands();
 	const rest = new REST({ version: '10' }).setToken(token);
 
 	try {
-		console.log(`Registering ${commands.length} application (/) commands...`);
+		console.log('جاري حذف جميع الأوامر...');
 		if (guildId) {
-			await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
-			console.log('تم تسجيل الأوامر على مستوى السيرفر المحدد.');
+			await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] });
+			console.log('✅ تم حذف جميع الأوامر على مستوى السيرفر.');
 		} else {
-			await rest.put(Routes.applicationCommands(clientId), { body: commands });
-			console.log('تم تسجيل الأوامر على مستوى جميع السيرفرات (قد يستغرق الأمر ساعة).');
+			await rest.put(Routes.applicationCommands(clientId), { body: [] });
+			console.log('✅ تم حذف جميع الأوامر على مستوى جميع السيرفرات.');
 		}
+		console.log('عدد الأوامر الآن: 0');
 	} catch (error) {
 		console.error(error);
 	}
