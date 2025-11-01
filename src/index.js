@@ -329,22 +329,26 @@ client.on(Events.InteractionCreate, async interaction => {
 			});
 			
 			const applicationEmbed = new EmbedBuilder()
-				.setColor(0x5865F2)
-				.setTitle('تقديم اداره')
-				.setDescription(`**معلومات المقدم**`)
-				.addFields(
-					{ name: 'المقدم', value: `${opener}`, inline: true },
-					{ name: 'الاسم', value: name, inline: true },
-					{ name: 'العمر', value: age, inline: true },
-					{ name: 'الدولة', value: country, inline: true },
-					{ name: 'خبراتك', value: experience.length > 1024 ? experience.substring(0, 1021) + '...' : experience, inline: false },
-					{ name: 'ليش اخترت سيرفرنا بالضبط', value: whyServer.length > 1024 ? whyServer.substring(0, 1021) + '...' : whyServer, inline: false },
-					{ name: 'وش دورك بالاداره', value: role.length > 1024 ? role.substring(0, 1021) + '...' : role, inline: false },
-					{ name: 'هل بتوضع الشعار ؟', value: logo, inline: true }
-				)
-				.setImage('https://media.discordapp.net/attachments/822598530752315443/1434154549236732035/image.png?ex=69074c01&is=6905fa81&hm=199fe4c6bdba9de1bdc63e67dd791fa0c7af4553184353186bea2b95d375dccb&=&format=webp&quality=lossless&width=963&height=320')
-				.setTimestamp()
-				.setFooter({ text: `تقديم من ${opener.tag}`, iconURL: opener.displayAvatarURL() });
+  .setColor(0x5865F2)
+  .setTitle('تقديم إدارة')
+  .setDescription(
+    `**معلومات المقدم**\n━━━━━━━━━━━━━━━\n\n` +
+    `**المقدم:** ${opener}\n` +
+    `**الاسم:** ${name}\n` +
+    `**العمر:** ${age}\n` +
+    `**الدولة:** ${country}\n\n` +
+    `**خبراتك:**\n${experience.length > 1024 ? experience.substring(0, 1021) + '...' : experience}\n\n` +
+    `**ليش اخترت سيرفرنا بالضبط:**\n${whyServer.length > 1024 ? whyServer.substring(0, 1021) + '...' : whyServer}\n\n` +
+    `**وش دورك بالإدارة:**\n${role.length > 1024 ? role.substring(0, 1021) + '...' : role}\n\n` +
+    `**هل بتوضع الشعار؟** ${logo}`
+  )
+  .setImage('https://media.discordapp.net/attachments/822598530752315443/1434154549236732035/image.png?ex=69074c01&is=6905fa81&hm=199fe4c6bdba9de1bdc63e67dd791fa0c7af4553184353186bea2b95d375dccb&=&format=webp&quality=lossless&width=963&height=320')
+  .setTimestamp()
+  .setFooter({
+    text: `تقديم من ${opener.tag}`,
+    iconURL: opener.displayAvatarURL()
+  });
+
 			
 			const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
 			const row = new ActionRowBuilder().addComponents(closeBtn);
@@ -490,3 +494,4 @@ if (!token) {
 }
 
 client.login(token);
+
