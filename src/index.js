@@ -98,13 +98,13 @@ client.on(Events.InteractionCreate, async interaction => {
 			
 			if (selectedValue === 'support') {
 				await interaction.deferReply({ ephemeral: true });
-				const supportRoleIds = ['', ''];
 				const adminRoleId = '1419306051164966964';
 				const supportCategoryId = '1397022492090171392';
 				const channelName = `ticket-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
+				const adminRole = guild.roles.cache.get(adminRoleId);
 				const permissionOverwrites = [
 					{ id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-					...supportRoleIds.map(id => ({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] })),
+					...(adminRole ? [{ id: adminRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : [{ id: adminRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }]),
 					{ id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
 				];
 				const ticketChannel = await guild.channels.create({
@@ -114,7 +114,6 @@ client.on(Events.InteractionCreate, async interaction => {
 					permissionOverwrites,
 					reason: `Ticket opened by ${opener.tag} (support)`,
 				});
-				const adminRole = guild.roles.cache.get(adminRoleId);
 				const infoEmbed = new EmbedBuilder()
 					.setColor(0x808080)
 					.setTitle('الرجاء انتظار الدعم الفني')
@@ -130,13 +129,13 @@ client.on(Events.InteractionCreate, async interaction => {
 			
 			if (selectedValue === 'reward') {
 				await interaction.deferReply({ ephemeral: true });
-				const supportRoleIds = ['', ''];
 				const rewardRoleId = '1419306155145953400';
 				const supportCategoryId = '1397022492090171392';
 				const channelName = `ticket-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
+				const rewardRole = guild.roles.cache.get(rewardRoleId);
 				const permissionOverwrites = [
 					{ id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-					...supportRoleIds.map(id => ({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] })),
+					...(rewardRole ? [{ id: rewardRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : [{ id: rewardRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }]),
 					{ id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
 				];
 				const ticketChannel = await guild.channels.create({
@@ -146,7 +145,6 @@ client.on(Events.InteractionCreate, async interaction => {
 					permissionOverwrites,
 					reason: `Ticket opened by ${opener.tag} (reward)`,
 				});
-				const rewardRole = guild.roles.cache.get(rewardRoleId);
 				const infoEmbed = new EmbedBuilder()
 					.setColor(0x808080)
 					.setTitle('تذكرة الريوارد')
@@ -164,14 +162,13 @@ client.on(Events.InteractionCreate, async interaction => {
 			const guild = interaction.guild;
 			const opener = interaction.user;
 			await interaction.deferReply({ ephemeral: true });
-			const supportRoleIds = ['', ''];
 			const adsRoleId = '1418942792121585724';
 			const adsCategoryId = '1397022474159526050';
 			const channelName = `ticket-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
+			const adsRole = guild.roles.cache.get(adsRoleId);
 			const permissionOverwrites = [
 				{ id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-				...supportRoleIds.map(id => ({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] })),
-				{ id: adsRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+				...(adsRole ? [{ id: adsRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : [{ id: adsRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }]),
 				{ id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
 			];
 			const ticketChannel = await guild.channels.create({
@@ -181,7 +178,6 @@ client.on(Events.InteractionCreate, async interaction => {
 				permissionOverwrites,
 				reason: `Ticket opened by ${opener.tag} (ads)`,
 			});
-			const adsRole = guild.roles.cache.get(adsRoleId);
 			const infoEmbed = new EmbedBuilder()
 				.setColor(0x808080)
 				.setTitle('لرؤيه اسعار الاعلانات توجه الئ <#1397022586466209842>')
