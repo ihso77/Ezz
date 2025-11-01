@@ -98,7 +98,7 @@ client.on(Events.InteractionCreate, async interaction => {
 			
 			if (selectedValue === 'support') {
 				await interaction.deferReply({ ephemeral: true });
-				const supportRoleIds = ['1419306051164966964', '1419306155145953400'];
+				const supportRoleIds = ['', ''];
 				const adminRoleId = '1419306051164966964';
 				const supportCategoryId = '1397022492090171392';
 				const channelName = `ticket-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
@@ -130,7 +130,7 @@ client.on(Events.InteractionCreate, async interaction => {
 			
 			if (selectedValue === 'reward') {
 				await interaction.deferReply({ ephemeral: true });
-				const supportRoleIds = ['1419306051164966964', '1419306155145953400'];
+				const supportRoleIds = ['', ''];
 				const rewardRoleId = '1419306155145953400';
 				const supportCategoryId = '1397022492090171392';
 				const channelName = `ticket-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
@@ -150,7 +150,7 @@ client.on(Events.InteractionCreate, async interaction => {
 				const infoEmbed = new EmbedBuilder()
 					.setColor(0x808080)
 					.setTitle('تذكرة الريوارد')
-					.setImage('https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933')
+					.setImage('https://media.discordapp.net/attachments/1433832273538711612/1434112148648235118/Picsart_25-10-16_13-18-43-513.jpg?ex=69072484&is=6905d304&hm=f2f1f426cdbf67c07f95db5e9d0339d476110baba8bd10fc40ea4c686e905b80&=&format=webp&width=2615&height=872')
 					.setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
 				const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
 				const row = new ActionRowBuilder().addComponents(closeBtn);
@@ -164,7 +164,7 @@ client.on(Events.InteractionCreate, async interaction => {
 			const guild = interaction.guild;
 			const opener = interaction.user;
 			await interaction.deferReply({ ephemeral: true });
-			const supportRoleIds = ['1419306051164966964', '1419306155145953400'];
+			const supportRoleIds = ['', ''];
 			const adsRoleId = '1418942792121585724';
 			const adsCategoryId = '1397022474159526050';
 			const channelName = `ticket-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
