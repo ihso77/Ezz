@@ -65,6 +65,7 @@ async function refreshTicketPanel(channelId) {
 		.setPlaceholder('اختر نوع التذكرة')
 		.addOptions([
 			{ label: 'الدعم الفني', value: 'support', emoji: { id: '1386132899874472098', name: 'estaff_ds' } },
+			{ label: 'ريوارد', value: 'reward', emoji: { id: '1434107495722520617', name: '1531vslgiveaway' } },
 		]);
 	const row = new ActionRowBuilder().addComponents(select);
 	await channel.send({ embeds: [embed], components: [row] }).catch(() => {});
@@ -93,43 +94,84 @@ client.on(Events.InteractionCreate, async interaction => {
 		if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select') {
 			const guild = interaction.guild;
 			const opener = interaction.user;
-			await interaction.deferReply({ ephemeral: true });
-			const supportRoleIds = ['1419306051164966964', '1419306155145953400'];
-			const supportCategoryId = '1397022492090171392';
-			const channelName = `ticket-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
-			const permissionOverwrites = [
-				{ id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-				...supportRoleIds.map(id => ({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] })),
-				{ id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-			];
-			const ticketChannel = await guild.channels.create({
-				name: channelName,
-				type: ChannelType.GuildText,
-				parent: supportCategoryId,
-				permissionOverwrites,
-				reason: `Ticket opened by ${opener.tag} (support)`,
-			});
-			const infoEmbed = new EmbedBuilder()
-				.setColor(0x808080)
-				.setTitle('الرجاء انتظار الدعم الفني')
-				.setImage('https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933')
-				.setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
-			const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-			const row = new ActionRowBuilder().addComponents(closeBtn);
-			await ticketChannel.send({ content: `${opener}`, embeds: [infoEmbed], components: [row] });
-			await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
-			return;
+			const selectedValue = interaction.values[0];
+			
+			if (selectedValue === 'support') {
+				await interaction.deferReply({ ephemeral: true });
+				const supportRoleIds = ['1419306051164966964', '1419306155145953400'];
+				const adminRoleId = '1419306051164966964';
+				const supportCategoryId = '1397022492090171392';
+				const channelName = `ticket-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
+				const permissionOverwrites = [
+					{ id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
+					...supportRoleIds.map(id => ({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] })),
+					{ id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+				];
+				const ticketChannel = await guild.channels.create({
+					name: channelName,
+					type: ChannelType.GuildText,
+					parent: supportCategoryId,
+					permissionOverwrites,
+					reason: `Ticket opened by ${opener.tag} (support)`,
+				});
+				const adminRole = guild.roles.cache.get(adminRoleId);
+				const infoEmbed = new EmbedBuilder()
+					.setColor(0x808080)
+					.setTitle('الرجاء انتظار الدعم الفني')
+					.setImage('https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933')
+					.setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
+				const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
+				const row = new ActionRowBuilder().addComponents(closeBtn);
+				const mentionText = adminRole ? `${adminRole}` : `<@&${adminRoleId}>`;
+				await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
+				await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
+				return;
+			}
+			
+			if (selectedValue === 'reward') {
+				await interaction.deferReply({ ephemeral: true });
+				const supportRoleIds = ['1419306051164966964', '1419306155145953400'];
+				const rewardRoleId = '1419306155145953400';
+				const supportCategoryId = '1397022492090171392';
+				const channelName = `ticket-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
+				const permissionOverwrites = [
+					{ id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
+					...supportRoleIds.map(id => ({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] })),
+					{ id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+				];
+				const ticketChannel = await guild.channels.create({
+					name: channelName,
+					type: ChannelType.GuildText,
+					parent: supportCategoryId,
+					permissionOverwrites,
+					reason: `Ticket opened by ${opener.tag} (reward)`,
+				});
+				const rewardRole = guild.roles.cache.get(rewardRoleId);
+				const infoEmbed = new EmbedBuilder()
+					.setColor(0x808080)
+					.setTitle('تذكرة الريوارد')
+					.setImage('https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933')
+					.setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
+				const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
+				const row = new ActionRowBuilder().addComponents(closeBtn);
+				const mentionText = rewardRole ? `${rewardRole}` : `<@&${rewardRoleId}>`;
+				await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
+				await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
+				return;
+			}
 		}
 		if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_ads_select') {
 			const guild = interaction.guild;
 			const opener = interaction.user;
 			await interaction.deferReply({ ephemeral: true });
 			const supportRoleIds = ['1419306051164966964', '1419306155145953400'];
+			const adsRoleId = '1418942792121585724';
 			const adsCategoryId = '1397022474159526050';
 			const channelName = `ticket-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
 			const permissionOverwrites = [
 				{ id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
 				...supportRoleIds.map(id => ({ id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] })),
+				{ id: adsRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
 				{ id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
 			];
 			const ticketChannel = await guild.channels.create({
@@ -139,6 +181,7 @@ client.on(Events.InteractionCreate, async interaction => {
 				permissionOverwrites,
 				reason: `Ticket opened by ${opener.tag} (ads)`,
 			});
+			const adsRole = guild.roles.cache.get(adsRoleId);
 			const infoEmbed = new EmbedBuilder()
 				.setColor(0x808080)
 				.setTitle('لرؤيه اسعار الاعلانات توجه الئ <#1397022586466209842>')
@@ -146,7 +189,8 @@ client.on(Events.InteractionCreate, async interaction => {
 				.setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
 			const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
 			const row = new ActionRowBuilder().addComponents(closeBtn);
-			await ticketChannel.send({ content: `${opener}`, embeds: [infoEmbed], components: [row] });
+			const mentionText = adsRole ? `${adsRole}` : `<@&${adsRoleId}>`;
+			await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
 			await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
 			return;
 		}
