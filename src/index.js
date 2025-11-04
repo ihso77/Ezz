@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Client, GatewayIntentBits, Partials, Collection, Events, PermissionFlagsBits, ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, Collection, Events, PermissionFlagsBits, ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readdirSync } from 'node:fs';
@@ -71,38 +71,11 @@ async function refreshTicketPanel(channelId) {
 	await channel.send({ embeds: [embed], components: [row] }).catch(() => {});
 }
 
-async function refreshStaffPanel(channelId) {
-	if (!channelId) return;
-	const channel = await client.channels.fetch(channelId).catch(() => null);
-	if (!channel || channel.type !== ChannelType.GuildText) return;
-	try {
-		const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
-		if (messages) {
-			const panelMsgs = messages.filter(m => m.author.id === client.user.id && m.components?.some(r => r.components?.some(c => c.customId === 'staff_application_select')));
-			for (const msg of panelMsgs.values()) await msg.delete().catch(() => {});
-		}
-	} catch {}
-	const PANEL_IMAGE = 'https://media.discordapp.net/attachments/822598530752315443/1434154549236732035/image.png?ex=69074c01&is=6905fa81&hm=199fe4c6bdba9de1bdc63e67dd791fa0c7af4553184353186bea2b95d375dccb&=&format=webp&quality=lossless&width=963&height=320';
-	const embed = new EmbedBuilder().setColor(0x808080).setTitle('تقديم اداره').setImage(PANEL_IMAGE);
-	const select = new StringSelectMenuBuilder()
-		.setCustomId('staff_application_select')
-		.setPlaceholder('اختر نوع التذكرة')
-		.addOptions([
-			{ label: 'تقديم اداره', value: 'staff', emoji: { id: '1386133151574654976', name: 'staff' } },
-		]);
-	const row = new ActionRowBuilder().addComponents(select);
-	await channel.send({ embeds: [embed], components: [row] }).catch(() => {});
-}
-
 client.once(Events.ClientReady, async c => {
 	console.log(`Logged in as ${c.user.tag}`);
 	
-	// تحديث جميع panels عند تشغيل البوت
 	const panelChannelId = process.env.TICKET_PANEL_CHANNEL_ID;
 	await refreshTicketPanel(panelChannelId);
-	
-	const staffPanelChannelId = '1397092707687727204';
-	await refreshStaffPanel(staffPanelChannelId);
 	
 	console.log('✅ تم تحديث جميع panels التيكيت');
 });
@@ -121,6 +94,7 @@ client.on(Events.InteractionCreate, async interaction => {
 			await command.execute(interaction);
 			return;
 		}
+		
 		if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select') {
 			const guild = interaction.guild;
 			const opener = interaction.user;
@@ -188,6 +162,7 @@ client.on(Events.InteractionCreate, async interaction => {
 				return;
 			}
 		}
+		
 		if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_ads_select') {
 			const guild = interaction.guild;
 			const opener = interaction.user;
@@ -221,57 +196,6 @@ client.on(Events.InteractionCreate, async interaction => {
 			return;
 		}
 		
-			
-			if (!role) role = 'غير محدد';
-			if (!logo) logo = otherQuestions.match(/نعم|لا/i)?.[0] || 'غير محدد';
-			
-			const staffCategoryId = '1397022482929549333';
-			const staffViewRoleId = '1419650368610111488';
-			const channelName = `staff-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
-			const staffViewRole = guild.roles.cache.get(staffViewRoleId);
-			
-			const permissionOverwrites = [
-				{ id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-				...(staffViewRole ? [{ id: staffViewRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : [{ id: staffViewRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }]),
-				{ id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-			];
-			
-			const ticketChannel = await guild.channels.create({
-				name: channelName,
-				type: ChannelType.GuildText,
-				parent: staffCategoryId,
-				permissionOverwrites,
-				reason: `Staff application by ${opener.tag}`,
-			});
-			
-			const applicationEmbed = new EmbedBuilder()
-  .setColor(0x5865F2)
-  .setTitle('تقديم إدارة')
-  .setDescription(
-    `**معلومات المقدم**\n━━━━━━━━━━━━━━━\n\n` +
-    `**المقدم:** ${opener}\n` +
-    `**الاسم:** ${name}\n` +
-    `**العمر:** ${age}\n` +
-    `**الدولة:** ${country}\n\n` +
-    `**خبراتك:**\n${experience.length > 1024 ? experience.substring(0, 1021) + '...' : experience}\n\n` +
-    `**ليش اخترت سيرفرنا بالضبط:**\n${whyServer.length > 1024 ? whyServer.substring(0, 1021) + '...' : whyServer}\n\n` +
-    `**وش دورك بالإدارة:**\n${role.length > 1024 ? role.substring(0, 1021) + '...' : role}\n\n` +
-    `**هل بتوضع الشعار؟** ${logo}`
-  )
-  .setImage('https://media.discordapp.net/attachments/822598530752315443/1434154549236732035/image.png?ex=69074c01&is=6905fa81&hm=199fe4c6bdba9de1bdc63e67dd791fa0c7af4553184353186bea2b95d375dccb&=&format=webp&quality=lossless&width=963&height=320')
-  .setTimestamp()
-  .setFooter({
-    text: `تقديم من ${opener.tag}`,
-    iconURL: opener.displayAvatarURL()
-  });
-
-			
-			const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-			const row = new ActionRowBuilder().addComponents(closeBtn);
-			await ticketChannel.send({ content: `${opener}`, embeds: [applicationEmbed], components: [row] });
-			await interaction.editReply({ content: `تم إرسال تقديمك بنجاح: ${ticketChannel}` });
-			return;
-		}
 		if (interaction.isButton() && interaction.customId === 'ticket_close') {
 			const channel = interaction.channel;
 			const openerMention = channel?.messages?.cache?.first()?.mentions?.users?.first();
@@ -281,7 +205,6 @@ client.on(Events.InteractionCreate, async interaction => {
 				if (openerId) {
 					const user = await interaction.client.users.fetch(openerId).catch(() => null);
 					if (user) {
-						// جمع ترانسكريبت التيكيت
 						let transcript = `📋 **ترانسكريبت التيكيت**\n`;
 						transcript += `**السيرفر:** ${interaction.guild.name}\n`;
 						transcript += `**القناة:** ${channel.name}\n`;
@@ -322,7 +245,6 @@ client.on(Events.InteractionCreate, async interaction => {
 						transcript += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
 						transcript += `✅ تم إغلاق التيكيت بنجاح\n`;
 						
-						// تقسيم الترانسكريبت إذا كان طويلاً
 						const maxLength = 1900;
 						if (transcript.length > maxLength) {
 							const parts = [];
@@ -385,7 +307,7 @@ client.on('messageCreate', async message => {
 	if (message.content.trim() === 'فراغ') {
 		const allowed = ROLE_IDS.some(id => message.member?.roles.cache.has(id));
 		if (!allowed) return;
-		const text = `.✦  　　　　　　　　　　.　　　　　　　　　✦ 　　　　. 　　　　　　　　　✦ 　　　　　❀ ‏Ezz ❀　　       　✦    　　　　 　　　　　　　　　　　　　　　　       　   　　　　　　　　　　　　　　　　       　    ✦ 　   　　　,　　　　　　　　　*　　     　　　　 　　,　　　 ‍ ‍ ‍ ‍ 　 　　　　　　　　　　　　.　　　　　 　　 　　　.　　　　　　　　　✦ 　　　　 　           　　　　　　　　　　　　　　❀ ‏Ezz ❀　　　　　˚　　　✦  　   　　　　,　　　　　　　　　　　       　    　　　　　　　　　　　　　　　　.　　　✦   　　    　　　　　 　　　　　.　　　　　　　　　　　　　.　　　　　　　　　　　　　*　　　　　　　　　. 　　　　　　　　　　.　　　　　　✦ 　　　　　　　❀ ‏Ezz ❀ ✦  　　　　　　　　　　　　　　　　       　   　　　　 　　　　　　　　　　　　　　　　       　   　　　　　　　　　　　　　　　　       　    ✦  　   　　　,　　　　　　　　　*　　     　　　　 　　,　　　 ‍ ‍ ‍ ‍ 　 　　　　✦ 　　　　　　　　.　　　　　 　　 　　　.　　❀ ‏Ezz ❀　　　　　　　　　　　 　           　　　　　　　　　　　　　　　　　　　˚　　　 　✦    　　　　,　　　　　　　　✦ 　　　       　    　　　　　　　　　　　　　　　　.　　　  　　 ✦    　　　　　 　　　　　.　　　　　　　　　　　　　.　　　　　　　　　　　　　　　* 　　   　　　　　 ✦　　　　　　　　　　. 　　　　　　　　　　.　　　　　✦ 　　　　　　　　.❀ ‏Ezz ❀ 　　　　　　　　　　　　　　　　       　   　　　　 　　　　　　　　　　　　　　　　       　   　　　　　　　　　　　　　　　　       　       ✦  　   　　　,　　　　　　　　　❀ ‏Ezz ❀　　     　　　　 　　,　　　 ‍ ‍ ‍ ‍ 　 　　　　　　　　　　　　.　　　　　 　　 　　　.　　　　　　　✦ 　　　　　　 　           　　　　　　　　　　　　　　　　　　　˚　　　 　   　　　　,　　　　　　　　　　　       　    　　　　　　　　　　　　　　　　.　　　  　　    　　　　　 　　　　　.　　　　　　　　　　　　❀ ‏ ❀ ‏Ezz　.　　　　　　　　　　　　　　　* 　　   　　　　　 ✦*　　　　　　　　　.✦  　　　　　　  　　　　.　　　　　　　　　✦ 　　　　. 　　　　　　　　　✦ 　　　　　　　       　✦    　　　　 　　　　　　　　　　　　　　　　       　   　　　　　　　　　　　　　　　　       　    ✦  　   　　　,　　　‏Ezz ❀ ‏ ❀　　　　　　*　　     　　　　 　　,　　　‍ ‍ ‍ ‍ 　 　　　　　　　　　　　　.　　　　　 　　 　　　.　　　　　　　　    ✦ 　　　　 　           　　　　　　　　　　　　　　　　　　　˚　　 ✦  　   　　　　,　　　　　 　　　　　　       　    　　　　　　　　　　　　　　　　.　　　✦   　　    　　　　　 　　　　　.　　　　　　　　　　　　　.　　　　　　　　　　‏Ezz ❀ ‏❀　　　*　　　　　　　　　. 　　　　　　　　　　.　　　　　　  : ✦ 　　　　　　　.✦  　　　　　　　　　　　　　　　　       　   　　　　 　　　　　　　　　　　　　　　　       　   　　　　　　　　　　　　　　　　       　    ✦  　   　　　,　　　　❀ ‏Ezz ❀　　　　　*　　     　　　　 　　,　　　 ‍ ‍ ‍ ‍ 　 　　　　✦ 　　　　　　　　.　　　　　 　　 　　　.　　　　　　　　 　　　　　 　           　　　　　　　　　　　　　　　　　　　˚　　　 　✦    　　　　,　　　　　　　　✦ 　　　       　    　　　　　　　　　　　　.　　　❀ Ezz  ❀`; 
+		const text = `.✦  　　　　　　　　　　.　　　　　　　　　✦ 　　　　. 　　　　　　　　　✦ 　　　　　❀ ‏Ezz ❀　　       　✦    　　　　 　　　　　　　　　　　　　　　　       　   　　　　　　　　　　　　　　　　       　    ✦ 　   　　　,　　　　　　　　　*　　     　　　　 　　,　　　 ‍ ‍ ‍ ‍ 　 　　　　　　　　　　　　.　　　　　 　　 　　　.　　　　　　　　　✦ 　　　　 　           　　　　　　　　　　　　　　❀ ‏Ezz ❀　　　　　˚　　　✦  　   　　　　,　　　　　　　　　　　       　    　　　　　　　　　　　　　　　　.　　　✦   　　    　　　　　 　　　　　.　　　　　　　　　　　　　.　　　　　　　　　　　　　*　　　　　　　　　. 　　　　　　　　　　.　　　　　　✦ 　　　　　　　❀ ‏Ezz ❀ ✦  　　　　　　　　　　　　　　　　       　   　　　　 　　　　　　　　　　　　　　　　       　   　　　　　　　　　　　　　　　　       　    ✦  　   　　　,　　　　　　　　　*　　     　　　　 　　,　　　 ‍ ‍ ‍ ‍ 　 　　　　✦ 　　　　　　　　.　　　　　 　　 　　　.　　❀ ‏Ezz ❀　　　　　　　　　　　 　           　　　　　　　　　　　　　　　　　　　˚　　　 　✦    　　　　,　　　　　　　　✦ 　　　       　    　　　　　　　　　　　　　　　　.　　　  　　 ✦    　　　　　 　　　　　.　　　　　　　　　　　　　.　　　　　　　　　　　　　　　* 　　   　　　　　 ✦　　　　　　　　　　. 　　　　　　　　　　.　　　　　✦ 　　　　　　　　.❀ ‏Ezz ❀ 　　　　　　　　　　　　　　　　       　   　　　　 　　　　　　　　　　　　　　　　       　   　　　　　　　　　　　　　　　　       　       ✦  　   　　　,　　　　　　　　　❀ ‏Ezz ❀　　     　　　　 　　,　　　 ‍ ‍ ‍ ‍ 　 　　　　　　　　　　　　.　　　　　 　　 　　　.　　　　　　　✦ 　　　　　　 　           　　　　　　　　　　　　　　　　　　　˚　　　 　   　　　　,　　　　　　　　　　　       　    　　　　　　　　　　　　　　　　.　　　  　　    　　　　　 　　　　　.　　　　　　　　　　　　❀ ‏ ❀ ‏Ezz　.　　　　　　　　　　　　　　　* 　　   　　　　　 ✦*　　　　　　　　　.✦  　　　　　　  　　　　.　　　　　　　　　✦ 　　　　. 　　　　　　　　　✦ 　　　　　　　       　✦    　　　　 　　　　　　　　　　　　　　　　       　   　　　　　　　　　　　　　　　　       　    ✦  　   　　　,　　　‏Ezz ❀ ‏ ❀　　　　　　*　　     　　　　 　　,　　　‍ ‍ ‍ ‍ 　 　　　　　　　　　　　　.　　　　　 　　 　　　.　　　　　　　　    ✦ 　　　　 　           　　　　　　　　　　　　　　　　　　　˚　　 ✦  　   　　　　,　　　　　 　　　　　　       　    　　　　　　　　　　　　　　　　.　　　✦   　　    　　　　　 　　　　　.　　　　　　　　　　　　　.　　　　　　　　　　‏Ezz ❀ ‏❀　　　*　　　　　　　　　. 　　　　　　　　　　.　　　　　　  : ✦ 　　　　　　　.✦  　　　　　　　　　　　　　　　　       　   　　　　 　　　　　　　　　　　　　　　　       　   　　　　　　　　　　　　　　　　       　    ✦  　   　　　,　　　　❀ ‏Ezz ❀　　　　　*　　     　　　　 　　,　　　 ‍ ‍ ‍ ‍ 　 　　　　✦ 　　　　　　　　.　　　　　 　　 　　　.　　　　　　　　 　　　　　 　           　　　　　　　　　　　　　　　　　　　˚　　　 　✦    　　　　,　　　　　　　　✦ 　　　       　    　　　　　　　　　　　　.　　　❀ Ezz  ❀`; 
 		await message.channel.send({ content: text });
 		return;
 	}
@@ -410,5 +332,3 @@ if (!token) {
 }
 
 client.login(token);
-
-
