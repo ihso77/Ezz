@@ -220,91 +220,7 @@ client.on(Events.InteractionCreate, async interaction => {
 			await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
 			return;
 		}
-		if (interaction.isStringSelectMenu() && interaction.customId === 'staff_application_select') {
-			if (interaction.values[0] === 'staff') {
-				const modal = new ModalBuilder()
-					.setCustomId('staff_application_modal')
-					.setTitle('تقديم اداره');
-				
-				const nameInput = new TextInputBuilder()
-					.setCustomId('staff_name')
-					.setLabel('الاسم')
-					.setStyle(TextInputStyle.Short)
-					.setRequired(true)
-					.setMaxLength(100);
-				
-				const ageInput = new TextInputBuilder()
-					.setCustomId('staff_age')
-					.setLabel('العمر')
-					.setStyle(TextInputStyle.Short)
-					.setRequired(true)
-					.setMaxLength(10);
-				
-				const countryInput = new TextInputBuilder()
-					.setCustomId('staff_country')
-					.setLabel('الدولة')
-					.setStyle(TextInputStyle.Short)
-					.setRequired(true)
-					.setMaxLength(100);
-				
-				const experienceInput = new TextInputBuilder()
-					.setCustomId('staff_experience')
-					.setLabel('خبراتك')
-					.setStyle(TextInputStyle.Paragraph)
-					.setRequired(true)
-					.setMaxLength(1000);
-				
-				// دمج جميع الأسئلة المتبقية في حقل واحد كبير
-				const otherQuestionsInput = new TextInputBuilder()
-					.setCustomId('staff_other')
-					.setLabel('ليش اخترت سيرفرنا + دورك + هل بتوضع الشعار؟')
-					.setPlaceholder('1. ليش اخترت سيرفرنا\n2. وش دورك بالاداره\n3. هل بتوضع الشعار؟ (نعم/لا)')
-					.setStyle(TextInputStyle.Paragraph)
-					.setRequired(true)
-					.setMaxLength(2000);
-				
-				const row1 = new ActionRowBuilder().addComponents(nameInput);
-				const row2 = new ActionRowBuilder().addComponents(ageInput);
-				const row3 = new ActionRowBuilder().addComponents(countryInput);
-				const row4 = new ActionRowBuilder().addComponents(experienceInput);
-				const row5 = new ActionRowBuilder().addComponents(otherQuestionsInput);
-				
-				modal.addComponents(row1, row2, row3, row4, row5);
-				await interaction.showModal(modal);
-				return;
-			}
-		}
-		if (interaction.isModalSubmit() && interaction.customId === 'staff_application_modal') {
-			const opener = interaction.user;
-			const guild = interaction.guild;
-			await interaction.deferReply({ ephemeral: true });
-			
-			const name = interaction.fields.getTextInputValue('staff_name');
-			const age = interaction.fields.getTextInputValue('staff_age');
-			const country = interaction.fields.getTextInputValue('staff_country');
-			const experience = interaction.fields.getTextInputValue('staff_experience');
-			const otherQuestions = interaction.fields.getTextInputValue('staff_other');
-			
-			// محاولة فصل الإجابات من الحقل المدمج
-			const lines = otherQuestions.split('\n').filter(l => l.trim());
-			let whyServer = otherQuestions;
-			let role = '';
-			let logo = '';
-			
-			// البحث عن الإجابات
-			if (lines.length >= 1) whyServer = lines[0].replace(/^[0-9]+\.\s*/, '').trim();
-			if (lines.length >= 2) role = lines[1].replace(/^[0-9]+\.\s*/, '').trim();
-			if (lines.length >= 3) logo = lines[2].replace(/^[0-9]+\.\s*/, '').trim();
-			
-			// إذا لم يكن هناك فواصل، نحاول البحث عن كلمات مفتاحية
-			if (!role && !logo) {
-				const logoMatch = otherQuestions.match(/شعار[؟?]?\s*[:：]?\s*(نعم|لا|yes|no)/i);
-				if (logoMatch) logo = logoMatch[1];
-				if (otherQuestions.includes('دور')) {
-					const roleMatch = otherQuestions.match(/دور[ك]?\s*[:：]?\s*([^\n]+)/i);
-					if (roleMatch) role = roleMatch[1].split(/[؟?]|شعار/i)[0].trim();
-				}
-			}
+		
 			
 			if (!role) role = 'غير محدد';
 			if (!logo) logo = otherQuestions.match(/نعم|لا/i)?.[0] || 'غير محدد';
@@ -494,4 +410,5 @@ if (!token) {
 }
 
 client.login(token);
+
 
