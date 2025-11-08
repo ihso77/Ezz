@@ -75,13 +75,7 @@ async function refreshStaffApplicationPanel(channelId) {
 	if (!channelId) return;
 	const channel = await client.channels.fetch(channelId).catch(() => null);
 	if (!channel || channel.type !== ChannelType.GuildText) return;
-	try {
-		const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
-		if (messages) {
-			const panelMsgs = messages.filter(m => m.author.id === client.user.id && m.components?.some(r => r.components?.some(c => c.customId === 'staff_application_select')));
-			for (const msg of panelMsgs.values()) await msg.delete().catch(() => {});
-		}
-	} catch {}
+	
 	const STAFF_PANEL_IMAGE = 'https://media.discordapp.net/attachments/1433832273538711612/1436075334565888010/image.png?ex=690e48e0&is=690cf760&hm=88ebb29ea8c00615c80da44823be56fd7d06367e88e4fb21980e1af0b7f543e0&=&format=webp&quality=lossless&width=963&height=320';
 	const embed = new EmbedBuilder().setColor(0x808080).setTitle('تقديم إدارة').setImage(STAFF_PANEL_IMAGE);
 	const select = new StringSelectMenuBuilder()
@@ -89,8 +83,21 @@ async function refreshStaffApplicationPanel(channelId) {
 		.setPlaceholder('اختر للتقديم')
 		.addOptions([
 			{ label: 'تقديم اداره', value: 'staff_application', emoji: { id: '1386133151574654976', name: 'staff' } },
+			{ label: 'Reset Menu', value: 'reset_menu', emoji: '🔄' },
 		]);
 	const row = new ActionRowBuilder().addComponents(select);
+	
+	try {
+		const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
+		if (messages) {
+			const panelMsg = messages.find(m => m.author.id === client.user.id && m.components?.some(r => r.components?.some(c => c.customId === 'staff_application_select')));
+			if (panelMsg) {
+				await panelMsg.edit({ embeds: [embed], components: [row] }).catch(() => {});
+				return;
+			}
+		}
+	} catch {}
+	
 	await channel.send({ embeds: [embed], components: [row] }).catch(() => {});
 }
 
@@ -256,6 +263,26 @@ client.on(Events.InteractionCreate, async interaction => {
 			const mentionText = staffRole ? `${staffRole}` : `<@&${staffRoleId}>`;
 			await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
 			await interaction.editReply({ content: `تم إنشاء تذكرة التقديم: ${ticketChannel}` });
+			return;
+		}
+		
+		
+		if (interaction.isButton() && interaction.customId === 'ticket_reset') {
+			await interaction.deferReply({ ephemeral: true });
+			try {
+				const channel = interaction.channel;
+				const messages = await channel.messages.fetch({ limit: 100 });
+				const messagesToDelete = messages.filter(m => m.id !== messages.first()?.id);
+				
+				if (messagesToDelete.size > 0) {
+					await channel.bulkDelete(messagesToDelete, true).catch(() => {});
+				}
+				
+				await interaction.editReply({ content: '✅ تم مسح الرسائل وإعادة تعيين القائمة.' });
+			} catch (e) {
+				console.error('Error resetting menu:', e);
+				await interaction.editReply({ content: '❌ حدث خطأ أثناء إعادة التعيين.' }).catch(() => {});
+			}
 			return;
 		}
 		
