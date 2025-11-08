@@ -240,6 +240,8 @@ client.on(Events.InteractionCreate, async interaction => {
 			
 			if (selectedValue === 'reset_menu') {
 				await interaction.deferUpdate();
+				const staffPanelChannelId = '1397092707687727204';
+				await refreshStaffApplicationPanel(staffPanelChannelId);
 				return;
 			}
 			
