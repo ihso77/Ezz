@@ -150,7 +150,8 @@ client.on(Events.InteractionCreate, async interaction => {
 					.setImage('https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933')
 					.setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
 				const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-				const row = new ActionRowBuilder().addComponents(closeBtn);
+				const resetBtn = new ButtonBuilder().setCustomId('ticket_reset').setLabel('Reset Menu').setStyle(ButtonStyle.Secondary);
+				const row = new ActionRowBuilder().addComponents(closeBtn, resetBtn);
 				const mentionText = adminRole ? `${adminRole}` : `<@&${adminRoleId}>`;
 				await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
 				await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
@@ -181,7 +182,8 @@ client.on(Events.InteractionCreate, async interaction => {
 					.setImage('https://media.discordapp.net/attachments/1433832273538711612/1434112148648235118/Picsart_25-10-16_13-18-43-513.jpg?ex=69072484&is=6905d304&hm=f2f1f426cdbf67c07f95db5e9d0339d476110baba8bd10fc40ea4c686e905b80&=&format=webp&width=2615&height=872')
 					.setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
 				const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-				const row = new ActionRowBuilder().addComponents(closeBtn);
+				const resetBtn = new ButtonBuilder().setCustomId('ticket_reset').setLabel('Reset Menu').setStyle(ButtonStyle.Secondary);
+				const row = new ActionRowBuilder().addComponents(closeBtn, resetBtn);
 				const mentionText = rewardRole ? `${rewardRole}` : `<@&${rewardRoleId}>`;
 				await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
 				await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
@@ -215,7 +217,8 @@ client.on(Events.InteractionCreate, async interaction => {
 				.setImage('https://media.discordapp.net/attachments/1397022589825843452/1433739124321423422/Picsart_25-10-16_13-18-24-693.jpg?ex=6905c91c&is=6904779c&hm=9cca4f862cdfde66a30ac123b31d2342a0cf084f1770c5309940be0f3fb6ca8b&=&format=webp&width=2797&height=933')
 				.setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
 			const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-			const row = new ActionRowBuilder().addComponents(closeBtn);
+			const resetBtn = new ButtonBuilder().setCustomId('ticket_reset').setLabel('Reset Menu').setStyle(ButtonStyle.Secondary);
+			const row = new ActionRowBuilder().addComponents(closeBtn, resetBtn);
 			const mentionText = adsRole ? `${adsRole}` : `<@&${adsRoleId}>`;
 			await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
 			await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
@@ -227,9 +230,12 @@ client.on(Events.InteractionCreate, async interaction => {
 			const opener = interaction.user;
 			await interaction.deferReply({ ephemeral: true });
 			const staffCategoryId = '1397022482929549333';
+			const staffRoleId = '1418942792121585724';
 			const channelName = `تقديم-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
+			const staffRole = guild.roles.cache.get(staffRoleId);
 			const permissionOverwrites = [
 				{ id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
+				...(staffRole ? [{ id: staffRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : [{ id: staffRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }]),
 				{ id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
 			];
 			const ticketChannel = await guild.channels.create({
@@ -245,8 +251,10 @@ client.on(Events.InteractionCreate, async interaction => {
 				.setImage('https://media.discordapp.net/attachments/1433832273538711612/1436075334565888010/image.png?ex=690e48e0&is=690cf760&hm=88ebb29ea8c00615c80da44823be56fd7d06367e88e4fb21980e1af0b7f543e0&=&format=webp&quality=lossless&width=963&height=320')
 				.setDescription(`${opener} تم فتح تذكرة التقديم بنجاح.\nالرجاء ملئ الطلب بشكل صحيح.`);
 			const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-			const row = new ActionRowBuilder().addComponents(closeBtn);
-			await ticketChannel.send({ content: `${opener}`, embeds: [infoEmbed], components: [row] });
+			const resetBtn = new ButtonBuilder().setCustomId('ticket_reset').setLabel('Reset Menu').setStyle(ButtonStyle.Secondary);
+			const row = new ActionRowBuilder().addComponents(closeBtn, resetBtn);
+			const mentionText = staffRole ? `${staffRole}` : `<@&${staffRoleId}>`;
+			await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
 			await interaction.editReply({ content: `تم إنشاء تذكرة التقديم: ${ticketChannel}` });
 			return;
 		}
@@ -359,6 +367,16 @@ const GIF_URL = 'https://media.discordapp.net/attachments/1397095407745499196/14
 client.on('messageCreate', async message => {
 	if (!message.inGuild()) return;
 	if (message.author.bot) return;
+	
+	if (message.channel.id === '1434534543133507614') {
+		try {
+			const gifUrl = 'https://media.discordapp.net/attachments/1397095407745499196/1429784555220369408/standard_1.gif?ex=690fc9e2&is=690e7862&hm=d4ac6478cb2f2716d75d54a0fce1d773a9cf00ed363f3eb465df589e06e1d859&=&width=2797&height=163';
+			await message.channel.send({ content: gifUrl });
+		} catch (err) {
+			console.error('Failed to send gif:', err);
+		}
+	}
+	
 	if (message.content.trim() === 'فراغ') {
 		const allowed = ROLE_IDS.some(id => message.member?.roles.cache.has(id));
 		if (!allowed) return;
