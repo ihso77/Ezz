@@ -3,6 +3,7 @@ import { Client, GatewayIntentBits, Partials, Collection, Events, PermissionFlag
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readdirSync } from 'node:fs';
+import { incrementClaimCount, getClaimCount } from './utils/claimStats.js';
 import { addNickname } from './utils/nicknameStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -163,7 +164,8 @@ client.on(Events.InteractionCreate, async interaction => {
 					.setImage('https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933')
 					.setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
 				const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-				const row = new ActionRowBuilder().addComponents(closeBtn);
+const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('استلام').setStyle(ButtonStyle.Primary);
+				const row = new ActionRowBuilder().addComponents(claimBtn, closeBtn);
 				const mentionText = adminRole ? `${adminRole}` : `<@&${adminRoleId}>`;
 				await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
 				await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
@@ -194,7 +196,8 @@ client.on(Events.InteractionCreate, async interaction => {
 					.setImage('https://media.discordapp.net/attachments/1433832273538711612/1434112148648235118/Picsart_25-10-16_13-18-43-513.jpg?ex=69072484&is=6905d304&hm=f2f1f426cdbf67c07f95db5e9d0339d476110baba8bd10fc40ea4c686e905b80&=&format=webp&width=2615&height=872')
 					.setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
 				const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-				const row = new ActionRowBuilder().addComponents(closeBtn);
+const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('استلام').setStyle(ButtonStyle.Primary);
+				const row = new ActionRowBuilder().addComponents(claimBtn, closeBtn);
 				const mentionText = rewardRole ? `${rewardRole}` : `<@&${rewardRoleId}>`;
 				await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
 				await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
@@ -228,7 +231,8 @@ client.on(Events.InteractionCreate, async interaction => {
 				.setImage('https://media.discordapp.net/attachments/1397022589825843452/1433739124321423422/Picsart_25-10-16_13-18-24-693.jpg?ex=6905c91c&is=6904779c&hm=9cca4f862cdfde66a30ac123b31d2342a0cf084f1770c5309940be0f3fb6ca8b&=&format=webp&width=2797&height=933')
 				.setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
 			const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-			const row = new ActionRowBuilder().addComponents(closeBtn);
+const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('استلام').setStyle(ButtonStyle.Primary);
+			const row = new ActionRowBuilder().addComponents(claimBtn, closeBtn);
 			const mentionText = adsRole ? `${adsRole}` : `<@&${adsRoleId}>`;
 			await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
 			await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
@@ -271,7 +275,8 @@ client.on(Events.InteractionCreate, async interaction => {
 					.setImage('https://media.discordapp.net/attachments/1433832273538711612/1436075334565888010/image.png?ex=690e48e0&is=690cf760&hm=88ebb29ea8c00615c80da44823be56fd7d06367e88e4fb21980e1af0b7f543e0&=&format=webp&quality=lossless&width=963&height=320')
 					.setDescription(`${opener} تم فتح تذكرة التقديم بنجاح.\nالرجاء ملئ الطلب بشكل صحيح.`);
 				const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-				const row = new ActionRowBuilder().addComponents(closeBtn);
+const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('استلام').setStyle(ButtonStyle.Primary);
+				const row = new ActionRowBuilder().addComponents(claimBtn, closeBtn);
 				const mentionText = staffRole ? `${staffRole}` : `<@&${staffRoleId}>`;
 				await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
 				await interaction.editReply({ content: `تم إنشاء تذكرة التقديم: ${ticketChannel}` });
@@ -279,6 +284,126 @@ client.on(Events.InteractionCreate, async interaction => {
 			}
 		}
 		
+		
+		if (interaction.isButton() && interaction.customId === 'ticket_claim') {
+			const STAFF_ROLE_ID = '1419306051164966964';
+			const channel = interaction.channel;
+			const claimer = interaction.member;
+			
+			// 1. التحقق من رول staff
+			if (!claimer.roles.cache.has(STAFF_ROLE_ID)) {
+				await interaction.reply({ content: '❌ ليس لديك الصلاحية لاستلام هذه التذكرة.', ephemeral: true });
+				return;
+			}
+			
+			// 2. التحقق من أن التذكرة لم يتم استلامها بالفعل
+			// نبحث عن رسالة البوت الأولى التي تحتوي على الأزرار
+			const messages = await channel.messages.fetch({ limit: 10, after: channel.id }).catch(() => null); // Fetch messages after channel creation to get the first message
+			const initialMessage = messages?.find(m => m.author.id === interaction.client.user.id && m.components.length > 0);
+			
+			if (!initialMessage) {
+				await interaction.reply({ content: '❌ تعذر العثور على رسالة التذكرة الأصلية.', ephemeral: true });
+				return;
+			}
+			
+			// التحقق مما إذا كان زر الاستلام معطلاً بالفعل
+			const claimButtonComponent = initialMessage.components[0].components.find(c => c.customId === 'ticket_claim');
+			if (claimButtonComponent?.disabled) {
+				await interaction.reply({ content: '❌ تم استلام هذه التذكرة بالفعل.', ephemeral: true });
+				return;
+			}
+			
+			await interaction.deferUpdate();
+			
+			// 3. تعديل صلاحيات القناة
+			// نحتاج إلى معرفة فاتح التذكرة. يمكن استخراجه من منشن الرسالة الأولى.
+			const firstMessage = messages.last(); // الرسالة الأولى هي الأقدم
+			const openerMention = firstMessage?.mentions?.users?.first();
+			const openerId = openerMention?.id;
+			
+			if (!openerId) {
+				await interaction.followUp({ content: '❌ تعذر تحديد فاتح التذكرة.', ephemeral: true });
+				return;
+			}
+			
+			const opener = await interaction.guild.members.fetch(openerId).catch(() => null);
+			
+			if (!opener) {
+				await interaction.followUp({ content: '❌ تعذر العثور على عضو فاتح التذكرة.', ephemeral: true });
+				return;
+			}
+			
+			// إعداد صلاحيات القناة الجديدة
+			const everyoneRole = interaction.guild.roles.everyone;
+			
+			// الصلاحيات الحالية للقناة
+			const currentOverwrites = channel.permissionOverwrites.cache.map(o => ({ id: o.id, allow: o.allow.bitfield, deny: o.deny.bitfield }));
+			
+			// إزالة صلاحية الإرسال من الجميع (بما في ذلك رول staff)
+			const newPermissionOverwrites = [
+				// منع الجميع من الإرسال
+				{ id: everyoneRole.id, deny: [PermissionFlagsBits.SendMessages] },
+				// السماح لفاتح التذكرة بالإرسال
+				{ id: opener.id, allow: [PermissionFlagsBits.SendMessages] },
+				// السماح للمستلم بالإرسال
+				{ id: claimer.id, allow: [PermissionFlagsBits.SendMessages] },
+				// التأكد من أن الجميع لا يزال بإمكانهم رؤية القناة
+				{ id: everyoneRole.id, allow: [PermissionFlagsBits.ViewChannel] },
+			];
+			
+			// إضافة الصلاحيات الأخرى الموجودة مسبقاً (مثل رول staff لرؤية القناة)
+			for (const overwrite of currentOverwrites) {
+				// نتجاهل الصلاحيات الخاصة بـ @everyone وفاتح التذكرة والمستلم لأننا سنعيد تعريفها
+				if (overwrite.id !== everyoneRole.id && overwrite.id !== opener.id && overwrite.id !== claimer.id) {
+					// إذا كان التعديل يخص رول staff، نضمن منع الإرسال ما لم يكن هو المستلم
+					if (overwrite.id === STAFF_ROLE_ID) {
+						// نضمن أن رول staff لا يمكنه الإرسال (deny SendMessages)
+						newPermissionOverwrites.push({ id: overwrite.id, allow: overwrite.allow, deny: overwrite.deny | PermissionFlagsBits.SendMessages });
+					} else {
+						// نضيف أي صلاحيات أخرى موجودة
+						newPermissionOverwrites.push(overwrite);
+					}
+				}
+			}
+			
+			// تطبيق التعديلات
+			await channel.edit({
+				permissionOverwrites: newPermissionOverwrites,
+				reason: `Ticket claimed by ${claimer.user.tag}`,
+			}).catch(console.error);
+			
+				// 4. تعطيل زر الاستلام وتحديث الرسالة
+				const newComponents = initialMessage.components.map(row => {
+					const newRow = ActionRowBuilder.from(row);
+					newRow.components = newRow.components.map(component => {
+						if (component.customId === 'ticket_claim') {
+							return ButtonBuilder.from(component).setDisabled(true).setLabel(`تم الاستلام بواسطة ${claimer.user.username}`);
+						}
+						return component;
+					});
+					return newRow;
+				});
+				
+				await initialMessage.edit({ components: newComponents }).catch(console.error);
+				
+				// 5. حفظ إحصائيات الاستلام وإرسال رسالة خاصة
+				const totalClaims = await incrementClaimCount(claimer.id);
+				
+				const dmEmbed = new EmbedBuilder()
+					.setColor(0x00FF00)
+					.setTitle('✅ تم استلام تذكرة بنجاح')
+					.setDescription(`لقد قمت باستلام التذكرة #${channel.name} بنجاح.`)
+					.addFields(
+						{ name: 'إجمالي الاستلامات', value: `${totalClaims}`, inline: true },
+						{ name: 'رابط التذكرة', value: channel.toString(), inline: true }
+					)
+					.setTimestamp();
+					
+				await claimer.send({ embeds: [dmEmbed] }).catch(console.error);
+				
+				await channel.send({ content: `✅ تم استلام التذكرة بواسطة ${claimer}. الآن يمكن فقط لـ ${opener} و ${claimer} الإرسال في هذه القناة.` });
+				return;
+		}
 		
 		if (interaction.isButton() && interaction.customId === 'ticket_close') {
 			const channel = interaction.channel;
