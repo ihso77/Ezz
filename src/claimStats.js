@@ -61,3 +61,20 @@ export async function getClaimCount(userId) {
     const stats = await readClaimStats();
     return stats.claims?.[userId] || 0;
 }
+
+/**
+ * يصفر عدد استلامات مستخدم معين ويحفظها.
+ * @param {string} userId آيدي المستخدم.
+ * @returns {Promise<void>}
+ */
+export async function resetClaimCount(userId) {
+    const stats = await readClaimStats();
+    
+    if (!stats.claims) {
+        stats.claims = {};
+    }
+    
+    stats.claims[userId] = 0;
+    
+    await writeClaimStats(stats);
+}
