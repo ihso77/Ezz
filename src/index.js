@@ -3,7 +3,7 @@ import { Client, GatewayIntentBits, Partials, Collection, Events, PermissionFlag
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readdirSync } from 'node:fs';
-import { incrementClaimCount, getClaimCount } from './utils/claimStats.js';
+import { incrementClaimCount, getClaimCount, resetClaimCount } from './utils/claimStats.js';
 import { addNickname } from './utils/nicknameStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -292,7 +292,7 @@ const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('اس�
 			
 			// 1. التحقق من رول staff
 			if (!claimer.roles.cache.has(STAFF_ROLE_ID)) {
-				await interaction.reply({ content: '❌ ليس لديك الصلاحية لاستلام هذه التذكرة.', ephemeral: true });
+				await interaction.reply({ content: 'ليس لديك الصلاحية لاستلام هذه التذكرة.', ephemeral: true });
 				return;
 			}
 			
@@ -302,16 +302,14 @@ const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('اس�
 			const initialMessage = messages?.find(m => m.author.id === interaction.client.user.id && m.components.length > 0);
 			
 			if (!initialMessage) {
-				await interaction.reply({ content: '❌ تعذر العثور على رسالة التذكرة الأصلية.', ephemeral: true });
+					await interaction.reply({ content: 'تعذر العثور على رسالة التذكرة الأصلية.', ephemeral: true });
 				return;
 			}
 			
-			// التحقق مما إذا كان زر الاستلام معطلاً بالفعل
-			const claimButtonComponent = initialMessage.components[0].components.find(c => c.customId === 'ticket_claim');
-			if (claimButtonComponent?.disabled) {
-				await interaction.reply({ content: '❌ تم استلام هذه التذكرة بالفعل.', ephemeral: true });
-				return;
-			}
+				// التحقق مما إذا كان زر الاستلام معطلاً بالفعل
+				const claimButtonComponent = initialMessage.components[0].components.find(c => c.customId === 'ticket_claim');
+				if (claimButtonComponent?.disabled) {					await interaction.reply({ content: 'تم استلام هذه التذكرة بالفعل.', ephemeral: true });					return;
+				}
 			
 			await interaction.deferUpdate();
 			
@@ -321,17 +319,15 @@ const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('اس�
 			const openerMention = firstMessage?.mentions?.users?.first();
 			const openerId = openerMention?.id;
 			
-			if (!openerId) {
-				await interaction.followUp({ content: '❌ تعذر تحديد فاتح التذكرة.', ephemeral: true });
-				return;
-			}
+				if (!openerId) 					await interaction.followUp({ content: 'تعذر تحديد فاتح التذكرة.', ephemeral: true });
+					return;
+				}
 			
 			const opener = await interaction.guild.members.fetch(openerId).catch(() => null);
 			
-			if (!opener) {
-				await interaction.followUp({ content: '❌ تعذر العثور على عضو فاتح التذكرة.', ephemeral: true });
-				return;
-			}
+				if (!opener) {
+					await interaction.followUp({ content: 'تعذر العثور على عضو فاتح التذكرة.', ephemeral: true });				return;
+				}
 			
 			// إعداد صلاحيات القناة الجديدة
 			const everyoneRole = interaction.guild.roles.everyone;
@@ -389,19 +385,17 @@ const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('اس�
 				// 5. حفظ إحصائيات الاستلام وإرسال رسالة خاصة
 				const totalClaims = await incrementClaimCount(claimer.id);
 				
-				const dmEmbed = new EmbedBuilder()
-					.setColor(0x00FF00)
-					.setTitle('✅ تم استلام تذكرة بنجاح')
-					.setDescription(`لقد قمت باستلام التذكرة #${channel.name} بنجاح.`)
-					.addFields(
-						{ name: 'إجمالي الاستلامات', value: `${totalClaims}`, inline: true },
-						{ name: 'رابط التذكرة', value: channel.toString(), inline: true }
-					)
-					.setTimestamp();
+					// رسالة القناة (Embed أزرق بدون إيموجيات)
+					const channelEmbed = new EmbedBuilder()
+						.setColor(0x3498DB) // أزرق
+						.setDescription(`تم استلام التذكرة من ${claimer}. الآن يمكن فقط لـ ${opener} و ${claimer} الإرسال في هذه القناة.`);
+						
+					await channel.send({ embeds: [channelEmbed] });
 					
-				await claimer.send({ embeds: [dmEmbed] }).catch(console.error);
+					// رسالة الخاص (نص فقط بدون Embed أو إيموجيات)
+					const dmMessage = `لقد استلمت التذكرة #${channel.name}. إجمالي استلاماتك: ${totalClaims}`;
+					await claimer.send({ content: dmMessage }).catch(console.error);
 				
-				await channel.send({ content: `✅ تم استلام التذكرة بواسطة ${claimer}. الآن يمكن فقط لـ ${opener} و ${claimer} الإرسال في هذه القناة.` });
 				return;
 		}
 		
