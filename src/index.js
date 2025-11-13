@@ -128,7 +128,7 @@ async function startBot() {
         const channel = await client.channels.fetch(channelId).catch(() => null);
         if (!channel || channel.type !== ChannelType.GuildText) return;
         
-        const PANEL_IMAGE = 'https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933';
+        const PANEL_IMAGE = 'https://cdn.discordapp.com/attachments/1438037917124788267/1438521792296652800/Picsart_25-10-16_13-18-43-513.jpg?ex=69172f51&is=6915ddd1&hm=11fe8fbf7548e562ec12486d86dd5432923a9796582c42275bec8742ca9e157b&';
         const embed = new EmbedBuilder().setColor(0x808080).setTitle('تذكره الدعم الفني').setImage(PANEL_IMAGE);
         const select = new StringSelectMenuBuilder()
             .setCustomId('ticket_select')
@@ -274,7 +274,8 @@ async function startBot() {
                     const infoEmbed = new EmbedBuilder()
                         .setColor(0x808080)
                         .setTitle('تذكرة الريوارد')
-                        .setImage('https://media.discordapp.net/attachments/1433832273538711612/1434112148648235118/Picsart_25-10-16_13-18-43-513.jpg?ex=69072484&is=6905d304&hm=f2f1f426cdbf67c07f95db5e9d0339d476110baba8bd10fc40ea4c686e905b80&=&format=webp&width=2615&height=872')
+                        .setImage('https://media.discordapp.net/attachments/1433832273538711612/1434112148648235118/Picsart_25-10-16_13-18-43-513.jpg?ex=69072484&is=6905d304&hm=f2f1f426cdbf67c07f95db5e9d0339d476110baba8bd10fc40ea4c686e905b80&=&format=webp&width=2615&height=872
+                                ')
                         .setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
                     const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
                     const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('استلام').setStyle(ButtonStyle.Primary);
@@ -309,7 +310,7 @@ async function startBot() {
                 const infoEmbed = new EmbedBuilder()
                     .setColor(0x808080)
                     .setTitle('تذكرة الإعلانات')
-                    .setImage('https://media.discordapp.net/attachments/1433832273538711612/1434112148648235118/Picsart_25-10-16_13-18-43-513.jpg?ex=69072484&is=6905d304&hm=f2f1f426cdbf67c07f95db5e9d0339d476110baba8bd10fc40ea4c686e905b80&=&format=webp&width=2615&height=872')
+                    .setImage('https://cdn.discordapp.com/attachments/1438037917124788267/1438521792728924240/Picsart_25-10-16_13-18-24-693.jpg?ex=69172f51&is=6915ddd1&hm=a7950e910f328174bd577514bb2cb15b9aa0fb8a8756ea9d7dd99c50766e7ad1&')
                     .setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
                 const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
                 const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('استلام').setStyle(ButtonStyle.Primary);
