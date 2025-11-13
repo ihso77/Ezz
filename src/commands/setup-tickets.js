@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChannelType, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, PermissionFlagsBits } from 'discord.js';
 
-const PANEL_IMAGE = 'https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933';
+const PANEL_IMAGE = 'https://cdn.discordapp.com/attachments/1438037917124788267/1438581877966508082/Picsart_25-10-16_13-18-43-513.jpg?ex=69176747&is=691615c7&hm=a7a8f4310ba5e484ad1d8521055199b63ad3c9f6aa846889813b64021f9d1929&';
 const ALLOWED_ROLES = ['1428103206705172673', '1418942792121585724'];
 
 export default {
@@ -38,3 +38,4 @@ export default {
 		await interaction.reply({ content: 'تم إرسال لوحة التذاكر.', ephemeral: true });
 	},
 };
+
