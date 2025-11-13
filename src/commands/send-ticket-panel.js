@@ -19,7 +19,7 @@ export default {
 		}
 		const embed = new EmbedBuilder()
 			.setColor(0x808080)
-			.setTitle('تذكره الدعم الفني')
+			.setTitle('تذكرة الريوارد')
 			.setImage(PANEL_IMAGE);
 
 		const select = new StringSelectMenuBuilder()
