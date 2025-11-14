@@ -382,7 +382,8 @@ async function startBot() {
                 if (selectedValue === 'support') {
                     await createTicket('ticket', '1419306051164966964', '1397022492090171392', {
                         title: 'الرجاء انتظار الدعم الفني',
-                        image: 'https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933'
+                        image: 'https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933',
+                        color: 0x808080
                     });
                     return;
                 }
@@ -390,12 +391,13 @@ async function startBot() {
                 if (selectedValue === 'reward') {
                     await createTicket('reward', '1419306155145953400', '1397022492090171392', {
                         title: 'تذكرة الريوارد',
-                        image: 'https://media.discordapp.net/attachments/1433832273538711612/1434112148648235118/Picsart_25-10-16_13-18-43-513.jpg?ex=69072484&is=6905d304&hm=f2f1f426cdbf67c07f95db5e9d0339d476110baba8bd10fc40ea4c686e905b80&=&format=webp&width=2615&height=872'
+                        image: 'https://media.discordapp.net/attachments/1433832273538711612/1434112148648235118/Picsart_25-10-16_13-18-43-513.jpg?ex=69072484&is=6905d304&hm=f2f1f426cdbf67c07f95db5e9d0339d476110baba8bd10fc40ea4c686e905b80&=&format=webp&width=2615&height=872',
+                        color: 0x808080
                     });
                     return;
                 }
 
-           if (selectedValue === 'advertisement') {
+                if (selectedValue === 'advertisement') {
                     const adsRoleId = '1419306155145953400';
                     const adsCategoryId = '1397022492090171392';
                     await createTicket('ads', adsRoleId, adsCategoryId, {
@@ -405,6 +407,8 @@ async function startBot() {
                     });
                     return;
                 }
+            }
+            
             if (interaction.isStringSelectMenu() && interaction.customId === 'staff_application_select') {
                 const guild = interaction.guild;
                 const opener = interaction.user;
