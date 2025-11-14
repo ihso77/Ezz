@@ -197,7 +197,7 @@ async function startBot() {
             .addOptions([
                 { label: 'الدعم الفني', value: 'support', emoji: { id: '1386132899874472098', name: 'estaff_ds' } },
                 { label: 'ريوارد', value: 'reward', emoji: { id: '1434107495722520617', name: '1531vslgiveaway' } },
-                { label: 'شراء إعلانات', value: 'advertisement', emoji: '📢' },
+                { label: 'إعلان', value: 'advertisement', emoji: '📢' },
                 { label: 'Reset Menu', value: 'reset_menu', emoji: '🔄' },
             ]);
 
@@ -397,65 +397,13 @@ async function startBot() {
                     return;
                 }
 
-                // ✅ التعديل الجديد: تيكيت شراء إعلانات مع صلاحيات محددة
+                // ✅ التعديل الرئيسي: إصلاح تيكيت الإعلانات
                 if (selectedValue === 'advertisement') {
-                    await interaction.deferReply({ ephemeral: true });
-                    
-                    const hiddenRoleId = '1418942792121585724'; // الرول المخفي
-                    const adsCategoryId = '1397022474159526050'; // كاتاجوري الإعلانات
-                    
-                    const channelName = `ads-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
-                    
-                    // التحقق من عدم وجود تذكرة سابقة
-                    const existingChannel = guild.channels.cache.find(ch => ch.name === channelName && ch.parentId === adsCategoryId);
-                    if (existingChannel) {
-                        await interaction.editReply({ content: `لديك بالفعل تذكرة إعلانات مفتوحة: ${existingChannel}` });
-                        return;
-                    }
-
-                    // إعداد الصلاحيات: صاحب التذكرة + الرول المخفي فقط
-                    const permissionOverwrites = [
-                        { 
-                            id: guild.roles.everyone, 
-                            deny: [PermissionFlagsBits.ViewChannel] 
-                        },
-                        { 
-                            id: opener.id, 
-                            allow: [
-                                PermissionFlagsBits.ViewChannel, 
-                                PermissionFlagsBits.SendMessages, 
-                                PermissionFlagsBits.ReadMessageHistory
-                            ] 
-                        },
-                        { 
-                            id: hiddenRoleId, 
-                            allow: [
-                                PermissionFlagsBits.ViewChannel, 
-                                PermissionFlagsBits.SendMessages, 
-                                PermissionFlagsBits.ReadMessageHistory
-                            ] 
-                        }
-                    ];
-
-                    // إنشاء الـ Embed
-                    const infoEmbed = new EmbedBuilder()
-                        .setColor(0x808080)
-                        .setTitle('📢 تذكرة شراء إعلانات')
-                        .setImage('https://media.discordapp.net/attachments/1433832273538711612/1436075334565888010/image.png?ex=690e48e0&is=690cf760&hm=88ebb29ea8c00615c80da44823be56fd7d06367e88e4fb21980e1af0b7f543e0&=&format=webp&quality=lossless&width=963&height=320')
-                        .setDescription(`${opener} تم فتح تذكرة شراء الإعلانات بنجاح.\n\nسيتم الرد عليك في أقرب وقت ممكن.`);
-                    
-                    const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-                    const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('استلام').setStyle(ButtonStyle.Primary);
-                    const row = new ActionRowBuilder().addComponents(claimBtn, closeBtn);
-                    
-                    // إرسال رسالة في التذكرة مع منشن للرول المخفي
-                    await ticketChannel.send({ 
-                        content: `<@&${hiddenRoleId}>\n${opener}`, 
-                        embeds: [infoEmbed], 
-                        components: [row] 
+                    await createTicket('ads', '1419306155145953400', '1397022492090171392', {
+                        title: '📢 تذكرة إعلان',
+                        image: 'https://media.discordapp.net/attachments/1433832273538711612/1436075334565888010/image.png?ex=690e48e0&is=690cf760&hm=88ebb29ea8c00615c80da44823be56fd7d06367e88e4fb21980e1af0b7f543e0&=&format=webp&quality=lossless&width=963&height=320',
+                        color: 0x808080
                     });
-                    
-                    await interaction.editReply({ content: `تم إنشاء تذكرة الإعلانات الخاصة بك: ${ticketChannel}` });
                     return;
                 }
             }
@@ -644,13 +592,4 @@ async function startBot() {
     client.login(process.env.DISCORD_TOKEN);
 }
 
-startBot();ء القناة
-                    const ticketChannel = await guild.channels.create({
-                        name: channelName,
-                        type: ChannelType.GuildText,
-                        parent: adsCategoryId,
-                        permissionOverwrites,
-                        reason: `Advertisement ticket opened by ${opener.tag}`,
-                    });
-
-                    // إنشا
+startBot();
