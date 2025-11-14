@@ -395,19 +395,16 @@ async function startBot() {
                     return;
                 }
 
-                if (selectedValue === 'advertisement') {
+           if (selectedValue === 'advertisement') {
                     const adsRoleId = '1419306155145953400';
                     const adsCategoryId = '1397022492090171392';
-
                     await createTicket('ads', adsRoleId, adsCategoryId, {
                         title: 'تذكرة إعلان',
                         image: 'https://media.discordapp.net/attachments/1433832273538711612/1436075334565888010/image.png?ex=690e48e0&is=690cf760&hm=88ebb29ea8c00615c80da44823be56fd7d06367e88e4fb21980e1af0b7f543e0&=&format=webp&quality=lossless&width=963&height=320',
-                        description: 'الرجاء توضيح تفاصيل إعلانك وانتظار المسؤول.'
+                        color: 0x808080
                     });
                     return;
                 }
-            }
-            
             if (interaction.isStringSelectMenu() && interaction.customId === 'staff_application_select') {
                 const guild = interaction.guild;
                 const opener = interaction.user;
