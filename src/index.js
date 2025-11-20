@@ -496,8 +496,10 @@ async function startBot() {
                 }
             }
             
+            // =================================================================================
+            // --- نظام التقديم على الإدارة المحدث (عبر الرسائل الخاصة) ---
+            // =================================================================================
             if (interaction.isStringSelectMenu() && interaction.customId === 'staff_application_select') {
-                const guild = interaction.guild;
                 const opener = interaction.user;
                 const selectedValue = interaction.values[0];
 
@@ -507,51 +509,137 @@ async function startBot() {
                 }
 
                 if (selectedValue === 'staff_application') {
+                    const STAFF_ROLE_ID = '1419306051164966964';
+                    const TARGET_GUILD_ID = '1365347054196490316';
+
                     await interaction.deferReply({ ephemeral: true });
 
-                    const managementRoleId = '1419306155145953400'; 
-                    const applicationsCategoryId = '1397022482929549333';
-
-                    const channelName = `apply-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
-                    
-                    const existingChannel = guild.channels.cache.find(ch => ch.name === channelName && ch.parentId === applicationsCategoryId);
-                    if (existingChannel) {
-                        await interaction.editReply({ content: `لديك بالفعل تذكرة تقديم مفتوحة: ${existingChannel}` });
+                    // التحقق من أن المستخدم في السيرفر المستهدف
+                    const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
+                    if (!targetGuild) {
+                        await interaction.editReply({ content: '❌ حدث خطأ في الوصول إلى السيرفر المطلوب.' });
                         return;
                     }
 
-                    const managementRole = guild.roles.cache.get(managementRoleId);
-                    const permissionOverwrites = [
-                        { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-                        { id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                        ...(managementRole ? [{ id: managementRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : [{ id: managementRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }]),
-                    ];
+                    const targetMember = await targetGuild.members.fetch(opener.id).catch(() => null);
+                    if (!targetMember) {
+                        await interaction.editReply({ content: '❌ يجب أن تكون عضواً في السيرفر للتقديم على الإدارة.' });
+                        return;
+                    }
 
-                    const ticketChannel = await guild.channels.create({
-                        name: channelName,
-                        type: ChannelType.GuildText,
-                        parent: applicationsCategoryId,
-                        permissionOverwrites,
-                        reason: `Staff application opened by ${opener.tag}`,
-                    });
+                    // التحقق من أنه ليس لديه الرتبة بالفعل
+                    if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
+                        await interaction.editReply({ content: '❌ أنت إداري بالفعل! لا يمكنك التقديم مرة أخرى.' });
+                        return;
+                    }
 
-                    const infoEmbed = new EmbedBuilder()
-                        .setColor(0x808080)
-                        .setTitle('📝 تذكرة تقديم إدارة')
-                        .setDescription(`أهلاً بك ${opener} في تذكرة التقديم.\n\nالرجاء الإجابة على الأسئلة التي سيتم طرحها عليك بصدق ووضوح.\nسيتم مراجعة طلبك من قبل الإدارة العليا.`)
-                        .setFooter({ text: 'بالتوفيق في تقديمك!' });
-                    
-                    const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('إغلاق التقديم').setStyle(ButtonStyle.Danger);
-                    const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('استلام').setStyle(ButtonStyle.Primary);
-                    const row = new ActionRowBuilder().addComponents(claimBtn, closeBtn);
-                    
-                    const mentionText = managementRole ? `${managementRole}` : `<@&${managementRoleId}>`;
-                    await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
-                    
-                    await interaction.editReply({ content: `تم فتح تذكرة التقديم الخاصة بك: ${ticketChannel}` });
+                    // إرسال رسالة خاصة للمستخدم
+                    try {
+                        const dmEmbed = new EmbedBuilder()
+                            .setColor(0x808080)
+                            .setTitle('📝 متطلبات التقديم على الإدارة')
+                            .setDescription('للتقديم على الإدارة، يجب عليك:\n\n**1️⃣ وضع الشعار التالي في اسم حسابك:**\n```Ezz```\n\n**2️⃣ وضع الرابط التالي في البايو الخاص بك:**\n```https://discord.gg/0ezz```\n\nبعد الانتهاء من وضع الشعار والرابط، اضغط على زر "✅ انتهيت" للتحقق.')
+                            .setFooter({ text: 'تأكد من إتمام الخطوتين قبل الضغط على الزر' });
+
+                        const doneButton = new ButtonBuilder()
+                            .setCustomId(`staff_verify_${opener.id}`)
+                            .setLabel('✅ انتهيت')
+                            .setStyle(ButtonStyle.Success);
+
+                        const dmRow = new ActionRowBuilder().addComponents(doneButton);
+
+                        await opener.send({ embeds: [dmEmbed], components: [dmRow] });
+                        await interaction.editReply({ content: '✅ تم إرسال تعليمات التقديم على الخاص! تحقق من رسائلك.' });
+                    } catch (dmError) {
+                        console.error('فشل إرسال رسالة خاصة:', dmError);
+                        await interaction.editReply({ content: '❌ لا يمكن إرسال رسالة لك على الخاص. تأكد من أن رسائلك الخاصة مفتوحة.' });
+                    }
                     return;
                 }
             }
+
+            // معالجة زر التحقق من التقديم
+            if (interaction.isButton() && interaction.customId.startsWith('staff_verify_')) {
+                const userId = interaction.customId.replace('staff_verify_', '');
+                
+                if (interaction.user.id !== userId) {
+                    await interaction.reply({ content: '❌ هذا الزر ليس لك!', ephemeral: true });
+                    return;
+                }
+
+                await interaction.deferReply({ ephemeral: true });
+
+                const TARGET_GUILD_ID = '1365347054196490316';
+                const STAFF_ROLE_ID = '1419306051164966964';
+                const REQUIRED_LOGO = 'Ezz';
+                const REQUIRED_LINK = 'https://discord.gg/0ezz';
+
+                try {
+                    // جلب معلومات المستخدم المحدثة
+                    const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID);
+                    const targetMember = await targetGuild.members.fetch(userId);
+                    
+                    // التحقق من أنه لا يملك الرتبة
+                    if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
+                        await interaction.editReply({ content: '❌ أنت إداري بالفعل!' });
+                        return;
+                    }
+
+                    const userName = targetMember.nickname || targetMember.user.globalName || targetMember.user.username;
+                    const userBio = targetMember.user.bio || '';
+
+                    let errors = [];
+
+                    // التحقق من وجود الشعار في الاسم
+                    if (!userName.includes(REQUIRED_LOGO)) {
+                        errors.push(`❌ الشعار "${REQUIRED_LOGO}" غير موجود في اسمك`);
+                    }
+
+                    // التحقق من وجود الرابط في البايو
+                    if (!userBio.includes(REQUIRED_LINK)) {
+                        errors.push(`❌ الرابط "${REQUIRED_LINK}" غير موجود في البايو الخاص بك`);
+                    }
+
+                    if (errors.length > 0) {
+                        const errorEmbed = new EmbedBuilder()
+                            .setColor(0xFF0000)
+                            .setTitle('⚠️ متطلبات ناقصة')
+                            .setDescription('**ناقصك:**\n\n' + errors.join('\n\n'))
+                            .setFooter({ text: 'أكمل المتطلبات ثم اضغط الزر مرة أخرى' });
+
+                        await interaction.editReply({ embeds: [errorEmbed] });
+                        return;
+                    }
+
+                    // كل شيء صحيح، إعطاء الرتبة
+                    await targetMember.roles.add(STAFF_ROLE_ID);
+
+                    const successEmbed = new EmbedBuilder()
+                        .setColor(0x00FF00)
+                        .setTitle('🎉 تهانينا!')
+                        .setDescription(`✅ تم قبول طلبك وإعطائك رتبة الإدارة!\n\n**مرحباً بك في فريق الإدارة!**`)
+                        .setFooter({ text: 'نتمنى لك التوفيق في مهامك الإدارية' });
+
+                    await interaction.editReply({ embeds: [successEmbed] });
+
+                    // تعطيل الزر بعد النجاح
+                    const disabledButton = new ButtonBuilder()
+                        .setCustomId('staff_verify_done')
+                        .setLabel('✅ تم القبول')
+                        .setStyle(ButtonStyle.Success)
+                        .setDisabled(true);
+
+                    const disabledRow = new ActionRowBuilder().addComponents(disabledButton);
+                    await interaction.message.edit({ components: [disabledRow] });
+
+                } catch (error) {
+                    console.error('خطأ في التحقق من التقديم:', error);
+                    await interaction.editReply({ content: '❌ حدث خطأ أثناء التحقق. حاول مرة أخرى لاحقاً.' });
+                }
+            }
+            // =================================================================================
+            // --- نهاية نظام التقديم على الإدارة ---
+            // =================================================================================
 
             if (interaction.isButton() && interaction.customId === 'ticket_claim') {
                 const member = interaction.member;
