@@ -438,31 +438,34 @@ async function startBot() {
                     const realName = user.globalName || user.username;
                     const nickname = targetMember.nickname;
                     
-                    // جلب البايو
+                    // جلب البايو باستخدام REST API (الطريقة الوحيدة الموثوقة)
                     let userBio = '';
                     try {
-                        // محاولة جلب البايو من user object
-                        if (user.bio !== undefined && user.bio !== null) {
-                            userBio = String(user.bio).toLowerCase();
-                        }
-                        // إذا لم يكن متاحاً، نحاول من member.user
-                        if (!userBio && targetMember.user.bio !== undefined && targetMember.user.bio !== null) {
-                            userBio = String(targetMember.user.bio).toLowerCase();
-                        }
-                        // محاولة أخيرة: استخدام REST API
-                        if (!userBio) {
-                            try {
-                                const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-                                const userData = await rest.get(Routes.user(userId));
-                                if (userData && typeof userData === 'object' && userData.bio) {
-                                    userBio = String(userData.bio).toLowerCase();
-                                }
-                            } catch (restError) {
-                                console.log('ملاحظة: لم يتمكن من جلب البايو عبر REST');
+                        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+                        const userData = await rest.get(Routes.user(userId));
+                        
+                        if (userData && typeof userData === 'object') {
+                            // البايو موجود في userData.bio
+                            if (userData.bio) {
+                                userBio = String(userData.bio).toLowerCase().trim();
+                                console.log(`[فحص البايو] تم جلب البايو للمستخدم ${userId} (${userBio.length} حرف): ${userBio.substring(0, 100)}...`);
+                            } else {
+                                console.log(`[فحص البايو] البايو فارغ للمستخدم ${userId}`);
                             }
+                        } else {
+                            console.log(`[فحص البايو] لم يتم جلب بيانات المستخدم بشكل صحيح`);
                         }
-                    } catch (bioError) {
-                        console.error('خطأ في جلب البايو:', bioError);
+                    } catch (restError) {
+                        console.error('[فحص البايو] خطأ في جلب البايو عبر REST:', restError.message || restError);
+                        // محاولة بديلة من user object (نادراً ما تعمل)
+                        try {
+                            if (user.bio !== undefined && user.bio !== null) {
+                                userBio = String(user.bio).toLowerCase().trim();
+                                console.log(`[فحص البايو] تم جلب البايو من user object: ${userBio.substring(0, 50)}...`);
+                            }
+                        } catch (fallbackError) {
+                            console.error('[فحص البايو] خطأ في جلب البايو من user object:', fallbackError);
+                        }
                     }
                     
                     let errors = [];
@@ -479,10 +482,44 @@ async function startBot() {
                         }
                     }
 
-                    // التحقق من وجود الرابط في البايو
-                    const hasLinkInBio = userBio && (userBio.includes(REQUIRED_LINK.toLowerCase()) || userBio.includes('https://discord.gg/0ezz') || userBio.includes('http://discord.gg/0ezz'));
-                    if (!hasLinkInBio) {
+                    // التحقق من وجود الرابط في البايو (فحص شامل لجميع الصيغ الممكنة)
+                    const linkVariations = [
+                        'discord.gg/0ezz',
+                        'https://discord.gg/0ezz',
+                        'http://discord.gg/0ezz',
+                        'discord.com/invite/0ezz',
+                        'https://discord.com/invite/0ezz',
+                        'http://discord.com/invite/0ezz',
+                        'discord.gg/0ezz', // بدون https
+                        'discord.com/0ezz' // صيغة بديلة
+                    ];
+                    
+                    // تنظيف البايو من المسافات الزائدة والأحرف الخاصة
+                    const cleanBio = userBio ? userBio.replace(/\s+/g, ' ').trim() : '';
+                    
+                    // فحص شامل - نبحث عن أي صيغة من الرابط
+                    let hasLinkInBio = false;
+                    let foundLink = '';
+                    
+                    if (cleanBio) {
+                        for (const link of linkVariations) {
+                            const searchLink = link.toLowerCase();
+                            if (cleanBio.includes(searchLink)) {
+                                hasLinkInBio = true;
+                                foundLink = link;
+                                console.log(`[فحص البايو] ✅ تم العثور على الرابط بصيغة: ${link}`);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!cleanBio || cleanBio.trim() === '') {
+                        errors.push(`البايو (bio) حق حسابك فارغ. لازم تحط الرابط "${REQUIRED_LINK}" في البايو`);
+                    } else if (!hasLinkInBio) {
+                        console.log(`[فحص البايو] ❌ الرابط غير موجود. البايو الحالي (${cleanBio.length} حرف): "${cleanBio.substring(0, 200)}"`);
                         errors.push(`الرابط "${REQUIRED_LINK}" مو موجود في البايو (bio) حق حسابك`);
+                    } else {
+                        console.log(`[فحص البايو] ✅ تم العثور على الرابط "${foundLink}" في البايو للمستخدم ${userId}`);
                     }
 
                     if (errors.length > 0) {
