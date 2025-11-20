@@ -572,7 +572,7 @@ async function startBot() {
                 const TARGET_GUILD_ID = '1365347054196490316';
                 const STAFF_ROLE_ID = '1419306051164966964';
                 const REQUIRED_LOGO = 'Ezz';
-                const REQUIRED_LINK = 'https://discord.gg/0ezz';
+                const REQUIRED_LINK = '0ezz';
 
                 try {
                     // جلب معلومات المستخدم المحدثة
