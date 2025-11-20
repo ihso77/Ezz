@@ -433,14 +433,22 @@ async function startBot() {
                         return;
                     }
 
-                    const userName = targetMember.nickname || user.globalName || user.username;
+                    // جلب الأسماء الحقيقية (مو nickname)
+                    const realName = user.globalName || user.username;
+                    const nickname = targetMember.nickname;
                     
                     let errors = [];
 
-                    // التحقق من وجود الشعار في الاسم فقط
-                    const hasLogo = userName.includes(REQUIRED_LOGO);
-                    if (!hasLogo) {
-                        errors.push(`الشعار "${REQUIRED_LOGO}" مو موجود في اسمك`);
+                    // التحقق من وجود الشعار في الاسم الحقيقي فقط (مو nickname)
+                    const hasLogoInRealName = realName && realName.includes(REQUIRED_LOGO);
+                    const hasLogoInNickname = nickname && nickname.includes(REQUIRED_LOGO);
+                    
+                    if (!hasLogoInRealName) {
+                        if (hasLogoInNickname) {
+                            errors.push(`الشعار "${REQUIRED_LOGO}" موجود في nickname بس، لازم يكون في اسم حسابك الحقيقي (username) مو في nickname`);
+                        } else {
+                            errors.push(`الشعار "${REQUIRED_LOGO}" مو موجود في اسم حسابك الحقيقي`);
+                        }
                     }
 
                     if (errors.length > 0) {
@@ -460,7 +468,7 @@ async function startBot() {
                     const acceptedAt = Date.now();
 
                     // حفظ معلومات القبول
-                    updateApplicationAcceptance(userId, hasLogo);
+                    updateApplicationAcceptance(userId, hasLogoInRealName);
 
                     // كل شيء صحيح، إعطاء الرتبة
                     await targetMember.roles.add(STAFF_ROLE_ID);
@@ -512,7 +520,7 @@ async function startBot() {
                             const logEmbed = new EmbedBuilder()
                                 .setColor(0x00FF00)
                                 .setTitle('تم قبول إداري جديد')
-                                .setDescription(`${user}\n\n**وقت التقديم:** ${appliedDate}\n**وقت القبول:** ${acceptedDate}\n**الشعار:** ${hasLogo ? 'موجود' : 'غير موجود'}`)
+                                .setDescription(`${user}\n\n**وقت التقديم:** ${appliedDate}\n**وقت القبول:** ${acceptedDate}\n**الشعار:** ${hasLogoInRealName ? 'موجود في الاسم الحقيقي' : 'غير موجود'}`)
                                 .setTimestamp();
 
                             await logChannel.send({ content: `${user}`, embeds: [logEmbed] });
