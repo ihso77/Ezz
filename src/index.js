@@ -247,6 +247,38 @@ async function startBot() {
         await channel.send({ embeds: [embed], components: [row] }).catch(() => {});
     }
 
+    async function refreshAdvertisementPanel(channelId) {
+        if (!channelId) return;
+        const channel = await client.channels.fetch(channelId).catch(() => null);
+        if (!channel || channel.type !== ChannelType.GuildText) return;
+        
+        const ADS_PANEL_IMAGE = 'https://media.discordapp.net/attachments/1438037917124788267/1438581879270932601/Picsart_25-10-16_13-18-24-693.jpg?ex=691ff907&is=691ea787&hm=c582f8003a90f74f28e482e73473f43c0eb825d1ce8b82aef31c97b09a5a564b&=&format=webp&width=2615&height=872';
+        const embed = new EmbedBuilder().setColor(0x808080).setTitle('تيكيت الاعلانات').setImage(ADS_PANEL_IMAGE);
+        
+        const select = new StringSelectMenuBuilder()
+            .setCustomId('advertisement_panel_select')
+            .setPlaceholder('اختر نوع التذكرة')
+            .addOptions([
+                { label: 'تيكت الاعلان', value: 'create_ad_ticket', emoji: { id: '1421961116111601755', name: 'IMG_1638' } },
+                { label: 'Reset Menu', value: 'reset_menu', emoji: '🔄' },
+            ]);
+
+        const row = new ActionRowBuilder().addComponents(select);
+        
+        try {
+            const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
+            if (messages) {
+                const panelMsg = messages.find(m => m.author.id === client.user.id && m.components?.some(r => r.components?.some(c => c.customId === 'advertisement_panel_select')));
+                if (panelMsg) {
+                    await panelMsg.edit({ embeds: [embed], components: [row] }).catch(() => {});
+                    return;
+                }
+            }
+        } catch {}
+        
+        await channel.send({ embeds: [embed], components: [row] }).catch(() => {});
+    }
+
     client.once(Events.ClientReady, async c => {
         console.log(`✅✅✅ تم تسجيل الدخول باسم ${c.user.tag} والبوت جاهز للعمل!`);
         
@@ -255,6 +287,9 @@ async function startBot() {
         
         const staffPanelChannelId = '1397092707687727204';
         await refreshStaffApplicationPanel(staffPanelChannelId);
+        
+        const advertisementPanelChannelId = '1397022589825843452';
+        await refreshAdvertisementPanel(advertisementPanelChannelId);
         
         console.log('✅ تم تحديث جميع panels التيكيت');
     });
@@ -397,13 +432,66 @@ async function startBot() {
                     return;
                 }
 
-                // ✅ التعديل الرئيسي: إصلاح تيكيت الإعلانات
                 if (selectedValue === 'advertisement') {
                     await createTicket('ads', '1419306155145953400', '1397022492090171392', {
                         title: '📢 تذكرة إعلان',
                         image: 'https://media.discordapp.net/attachments/1433832273538711612/1436075334565888010/image.png?ex=690e48e0&is=690cf760&hm=88ebb29ea8c00615c80da44823be56fd7d06367e88e4fb21980e1af0b7f543e0&=&format=webp&quality=lossless&width=963&height=320',
                         color: 0x808080
                     });
+                    return;
+                }
+            }
+            
+            if (interaction.isStringSelectMenu() && interaction.customId === 'advertisement_panel_select') {
+                const guild = interaction.guild;
+                const opener = interaction.user;
+                const selectedValue = interaction.values[0];
+
+                if (selectedValue === 'reset_menu') {
+                    await interaction.deferUpdate();
+                    return;
+                }
+
+                if (selectedValue === 'create_ad_ticket') {
+                    await interaction.deferReply({ ephemeral: true });
+
+                    const adsCategoryId = '1397022474159526050';
+                    const channelName = `ad-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
+                    
+                    const existingChannel = guild.channels.cache.find(ch => ch.name === channelName && ch.parentId === adsCategoryId);
+                    if (existingChannel) {
+                        await interaction.editReply({ content: `لديك بالفعل تذكرة إعلان مفتوحة: ${existingChannel}` });
+                        return;
+                    }
+
+                    const permissionOverwrites = [
+                        { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
+                        { id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                        { id: '1419306155145953400', allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                    ];
+
+                    const ticketChannel = await guild.channels.create({
+                        name: channelName,
+                        type: ChannelType.GuildText,
+                        parent: adsCategoryId,
+                        permissionOverwrites,
+                        reason: `Advertisement ticket opened by ${opener.tag}`,
+                    });
+
+                    const ADS_TICKET_IMAGE = 'https://media.discordapp.net/attachments/1438037917124788267/1438581879270932601/Picsart_25-10-16_13-18-24-693.jpg?ex=691ff907&is=691ea787&hm=c582f8003a90f74f28e482e73473f43c0eb825d1ce8b82aef31c97b09a5a564b&=&format=webp&width=2615&height=872';
+                    
+                    const infoEmbed = new EmbedBuilder()
+                        .setColor(0x808080)
+                        .setTitle('📢 تذكرة إعلان')
+                        .setImage(ADS_TICKET_IMAGE)
+                        .setDescription(`${opener} تم فتح تذكرة الإعلان بنجاح.\n\nسيتم الرد عليك قريباً من قبل فريق الإدارة.`);
+                    
+                    const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
+                    const row = new ActionRowBuilder().addComponents(closeBtn);
+                    
+                    await ticketChannel.send({ content: `<@&1419306155145953400>\n${opener}`, embeds: [infoEmbed], components: [row] });
+                    
+                    await interaction.editReply({ content: `تم إنشاء تذكرة الإعلان: ${ticketChannel}` });
                     return;
                 }
             }
