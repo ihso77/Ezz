@@ -581,7 +581,7 @@ async function startBot() {
                     
                     // التحقق من أنه لا يملك الرتبة
                     if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
-                        await interaction.editReply({ content: '❌ أنت إداري بالفعل!' });
+                        await interaction.editReply({ content: 'يزم انت اداري اصلا تبي تصير اداري مره ثانيه تستعبط ؟؟' });
                         return;
                     }
 
