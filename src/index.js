@@ -946,6 +946,40 @@ async function startBot() {
         if (message.author.bot) return;
 
         try {
+            // =================================================================================
+            // --- نظام وضع لا تزعجه (DND Mode) ---
+            // =================================================================================
+            const ALLOWED_USER_ID = '1438036495838609471';
+            const messageContent = message.content.trim();
+
+            // معالجة أوامر تفعيل/تعطيل وضع لا تزعجه
+            if (messageContent === '-on' || messageContent === '-off') {
+                // التحقق من أن المستخدم هو الشخص المصرح له فقط
+                if (message.author.id !== ALLOWED_USER_ID) {
+                    return; // تجاهل الأمر إذا لم يكن المستخدم المصرح له
+                }
+
+                if (messageContent === '-on') {
+                    setDndMode(true);
+                    await message.reply('✅ تم تفعيل وضع لا تزعجه. البوت لن يرد على المنشنات حالياً.');
+                    return;
+                } else if (messageContent === '-off') {
+                    setDndMode(false);
+                    await message.reply('❌ تم تعطيل وضع لا تزعجه. البوت سيرد على المنشنات الآن.');
+                    return;
+                }
+            }
+
+            // معالجة ذكر البوت عندما يكون الوضع مفعّل
+            if (isDndModeEnabled() && message.mentions.has(client.user)) {
+                const boxName = message.author.globalName || message.author.username;
+                await message.reply(`**${boxName}** حالياً لا تزعجه`);
+                return;
+            }
+            // =================================================================================
+            // --- نهاية نظام وضع لا تزعجه ---
+            // =================================================================================
+
             // 1. إرسال رسالة تلقائية في رومات محددة
             if (AUTO_MESSAGE_CHANNELS.includes(message.channel.id)) {
                 await message.channel.send(AUTO_MESSAGE_IMAGE);
@@ -958,8 +992,6 @@ async function startBot() {
 
             // التحقق من وجود الرول
             if (!member.roles.cache.has(AUTO_REPLY_ROLE_ID)) return;
-
-            const messageContent = message.content.trim();
 
             // الرد على كلمة "خط"
             if (messageContent === 'خط') {
