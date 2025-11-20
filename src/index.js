@@ -756,6 +756,136 @@ async function startBot() {
         await refreshAdvertisementPanel(advertisementPanelChannelId);
         
         console.log('✅ تم تحديث جميع panels التيكيت');
+        
+        // =================================================================================
+        // --- نظام الفحص الدوري للإداريين (كل 6 ساعات) ---
+        // =================================================================================
+        const STAFF_ROLE_ID = '1419306051164966964';
+        const TARGET_GUILD_ID = '1365347054196490316';
+        const CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 ساعات بالميلي ثانية
+        
+        async function checkStaffMembers() {
+            try {
+                console.log('[فحص الإداريين] بدء فحص الإداريين...');
+                const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
+                if (!targetGuild) {
+                    console.error('[فحص الإداريين] فشل في الوصول للسيرفر');
+                    return;
+                }
+                
+                // جلب جميع الأعضاء الذين لديهم الرتبة
+                const staffRole = targetGuild.roles.cache.get(STAFF_ROLE_ID);
+                if (!staffRole) {
+                    console.error('[فحص الإداريين] الرتبة غير موجودة');
+                    return;
+                }
+                
+                const staffMembers = staffRole.members;
+                console.log(`[فحص الإداريين] تم العثور على ${staffMembers.size} إداري`);
+                
+                // الشعارات المطلوبة (في بداية الاسم)
+                const requiredLogos = ['ezz', 'ᴱᶻᶻ'];
+                
+                for (const [memberId, member] of staffMembers) {
+                    try {
+                        const user = member.user;
+                        const realName = (user.globalName || user.username || '').toLowerCase();
+                        const nickname = (member.nickname || '').toLowerCase();
+                        
+                        // فحص إذا كان الشعار موجود في بداية الاسم الحقيقي
+                        const hasLogoAtStart = requiredLogos.some(logo => realName.startsWith(logo));
+                        
+                        if (!hasLogoAtStart) {
+                            // إضافة تحذير
+                            const warningCount = addStaffWarning(memberId);
+                            
+                            console.log(`[فحص الإداريين] ⚠️ ${user.tag} (${memberId}) - الشعار غير موجود. التحذيرات: ${warningCount}/3`);
+                            
+                            // إرسال رسالة تحذير بالخاص
+                            try {
+                                const warningEmbed = new EmbedBuilder()
+                                    .setColor(0xFFA500)
+                                    .setTitle('⚠️ تحذير - الشعار مفقود')
+                                    .setDescription(`عزيزي ${user},\n\nالشعار المطلوب (Ezz, EZZ, أو ᴱᶻᶻ) غير موجود في بداية اسم حسابك.\n\n**عدد التحذيرات:** ${warningCount}/3\n\n⚠️ إذا وصلت إلى 3 تحذيرات، سيتم فصلك من السيرفر وإزالة جميع رتبك.\n\nيرجى إضافة الشعار في بداية اسم حسابك فوراً.`)
+                                    .setFooter({ text: 'هذا تحذير تلقائي من البوت' })
+                                    .setTimestamp();
+                                
+                                await user.send({ embeds: [warningEmbed] });
+                                console.log(`[فحص الإداريين] ✅ تم إرسال تحذير بالخاص لـ ${user.tag}`);
+                            } catch (dmError) {
+                                console.error(`[فحص الإداريين] ❌ فشل إرسال تحذير بالخاص لـ ${user.tag}:`, dmError.message);
+                            }
+                            
+                            // إذا وصل لـ 3 تحذيرات، فصل العضو
+                            if (warningCount >= 3) {
+                                console.log(`[فحص الإداريين] 🚫 ${user.tag} وصل لـ 3 تحذيرات - سيتم فصله`);
+                                
+                                try {
+                                    // إزالة جميع الرتب
+                                    const rolesToRemove = member.roles.cache.filter(role => role.id !== targetGuild.roles.everyone.id);
+                                    if (rolesToRemove.size > 0) {
+                                        await member.roles.remove(rolesToRemove, 'وصل لـ 3 تحذيرات - الشعار مفقود');
+                                        console.log(`[فحص الإداريين] ✅ تم إزالة ${rolesToRemove.size} رتبة من ${user.tag}`);
+                                    }
+                                    
+                                    // فصل العضو
+                                    await member.kick('وصل لـ 3 تحذيرات - الشعار مفقود في بداية الاسم');
+                                    console.log(`[فحص الإداريين] ✅ تم فصل ${user.tag} من السيرفر`);
+                                    
+                                    // إرسال رسالة بالخاص
+                                    try {
+                                        const kickEmbed = new EmbedBuilder()
+                                            .setColor(0xFF0000)
+                                            .setTitle('❌ تم فصلك من السيرفر')
+                                            .setDescription(`عزيزي ${user},\n\nتم فصلك من السيرفر بسبب:\n\n**وصلت إلى 3 تحذيرات**\nالشعار المطلوب (Ezz, EZZ, أو ᴱᶻᶻ) غير موجود في بداية اسم حسابك.\n\nتم إزالة جميع رتبك.\n\nيمكنك العودة بعد إضافة الشعار في بداية اسم حسابك.`)
+                                            .setFooter({ text: 'هذا إجراء تلقائي من البوت' })
+                                            .setTimestamp();
+                                        
+                                        await user.send({ embeds: [kickEmbed] });
+                                    } catch (kickDmError) {
+                                        console.error(`[فحص الإداريين] ❌ فشل إرسال رسالة الفصل بالخاص:`, kickDmError.message);
+                                    }
+                                    
+                                    // إعادة تعيين التحذيرات
+                                    resetStaffWarnings(memberId);
+                                    
+                                } catch (kickError) {
+                                    console.error(`[فحص الإداريين] ❌ فشل فصل ${user.tag}:`, kickError.message);
+                                }
+                            }
+                        } else {
+                            // إذا كان الشعار موجود، إعادة تعيين التحذيرات
+                            const currentWarnings = getStaffWarningCount(memberId);
+                            if (currentWarnings > 0) {
+                                resetStaffWarnings(memberId);
+                                console.log(`[فحص الإداريين] ✅ ${user.tag} - الشعار موجود، تم إعادة تعيين التحذيرات`);
+                            }
+                        }
+                        
+                        // تأخير صغير بين كل عضو لتجنب rate limit
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        
+                    } catch (memberError) {
+                        console.error(`[فحص الإداريين] خطأ في فحص عضو ${memberId}:`, memberError.message);
+                    }
+                }
+                
+                console.log('[فحص الإداريين] ✅ انتهى الفحص');
+                
+            } catch (error) {
+                console.error('[فحص الإداريين] خطأ في الفحص:', error);
+            }
+        }
+        
+        // تشغيل الفحص فوراً عند بدء البوت
+        await checkStaffMembers();
+        
+        // تشغيل الفحص كل 6 ساعات
+        setInterval(checkStaffMembers, CHECK_INTERVAL);
+        console.log(`[فحص الإداريين] تم تفعيل الفحص الدوري كل 6 ساعات`);
+        // =================================================================================
+        // --- نهاية نظام الفحص الدوري للإداريين ---
+        // =================================================================================
     });
 
     client.on(Events.GuildMemberUpdate, (oldMember, newMember) => {
