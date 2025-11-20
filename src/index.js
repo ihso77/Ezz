@@ -549,10 +549,10 @@ async function startBot() {
                         const dmRow = new ActionRowBuilder().addComponents(doneButton);
 
                         await opener.send({ embeds: [dmEmbed], components: [dmRow] });
-                        await interaction.editReply({ content: '✅ تم إرسال تعليمات التقديم على الخاص! تحقق من رسائلك.' });
+                        await interaction.editReply({ content: 'شيكك خاص يا حلو' });
                     } catch (dmError) {
                         console.error('فشل إرسال رسالة خاصة:', dmError);
-                        await interaction.editReply({ content: '❌ لا يمكن إرسال رسالة لك على الخاص. تأكد من أن رسائلك الخاصة مفتوحة.' });
+                        await interaction.editReply({ content: 'خاصك مقفل او انت عاطيني بلوك 😕 ' });
                     }
                     return;
                 }
