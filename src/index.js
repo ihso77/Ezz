@@ -207,7 +207,347 @@ async function startBot() {
             const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
             if (messages) {
                 const panelMsg = messages.find(m => m.author.id === client.user.id && m.components?.some(r => r.components?.some(c => c.customId === 'ticket_select')));
-                if (panelMsg) {
+                if (selectedValue === 'advertisement') {
+                    await createTicket('ads', '1419306155145953400', '1397022492090171392', {
+                        title: '📢 تذكرة إعلان',
+                        image: 'https://media.discordapp.net/attachments/1433832273538711612/1436075334565888010/image.png?ex=690e48e0&is=690cf760&hm=88ebb29ea8c00615c80da44823be56fd7d06367e88e4fb21980e1af0b7f543e0&=&format=webp&quality=lossless&width=963&height=320',
+                        color: 0x808080
+                    });
+                    return;
+                }
+            }
+            
+            if (interaction.isStringSelectMenu() && interaction.customId === 'advertisement_panel_select') {
+                const guild = interaction.guild;
+                const opener = interaction.user;
+                const selectedValue = interaction.values[0];
+
+                if (selectedValue === 'reset_menu') {
+                    await interaction.deferUpdate();
+                    return;
+                }
+
+                if (selectedValue === 'create_ad_ticket') {
+                    await interaction.deferReply({ ephemeral: true });
+
+                    const adsCategoryId = '1397022474159526050';
+                    const channelName = `ad-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
+                    
+                    const existingChannel = guild.channels.cache.find(ch => ch.name === channelName && ch.parentId === adsCategoryId);
+                    if (existingChannel) {
+                        await interaction.editReply({ content: `لديك بالفعل تذكرة إعلان مفتوحة: ${existingChannel}` });
+                        return;
+                    }
+
+                    const permissionOverwrites = [
+                        { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
+                        { id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                        { id: '1419306155145953400', allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                    ];
+
+                    const ticketChannel = await guild.channels.create({
+                        name: channelName,
+                        type: ChannelType.GuildText,
+                        parent: adsCategoryId,
+                        permissionOverwrites,
+                        reason: `Advertisement ticket opened by ${opener.tag}`,
+                    });
+
+                    const ADS_TICKET_IMAGE = 'https://media.discordapp.net/attachments/1438037917124788267/1438581879270932601/Picsart_25-10-16_13-18-24-693.jpg?ex=691ff907&is=691ea787&hm=c582f8003a90f74f28e482e73473f43c0eb825d1ce8b82aef31c97b09a5a564b&=&format=webp&width=2615&height=872';
+                    
+                    const infoEmbed = new EmbedBuilder()
+                        .setColor(0x808080)
+                        .setTitle('📢 تذكرة إعلان')
+                        .setImage(ADS_TICKET_IMAGE)
+                        .setDescription(`${opener} تم فتح تذكرة الإعلان بنجاح.\n\nسيتم الرد عليك قريباً من قبل فريق الإدارة.`);
+                    
+                    const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
+                    const row = new ActionRowBuilder().addComponents(closeBtn);
+                    
+                    await ticketChannel.send({ content: `<@&1419306155145953400>\n${opener}`, embeds: [infoEmbed], components: [row] });
+                    
+                    await interaction.editReply({ content: `تم إنشاء تذكرة الإعلان: ${ticketChannel}` });
+                    return;
+                }
+            }
+            
+            // =================================================================================
+            // --- نظام التقديم على الإدارة المحدث (عبر الرسائل الخاصة) ---
+            // =================================================================================
+            if (interaction.isStringSelectMenu() && interaction.customId === 'staff_application_select') {
+                const opener = interaction.user;
+                const selectedValue = interaction.values[0];
+
+                if (selectedValue === 'reset_menu') {
+                    await interaction.deferUpdate();
+                    return;
+                }
+
+                if (selectedValue === 'staff_application') {
+                    const STAFF_ROLE_ID = '1419306051164966964';
+                    const TARGET_GUILD_ID = '1365347054196490316';
+
+                    await interaction.deferReply({ ephemeral: true });
+
+                    // التحقق من أن المستخدم في السيرفر المستهدف
+                    const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
+                    if (!targetGuild) {
+                        await interaction.editReply({ content: '❌ حدث خطأ في الوصول إلى السيرفر المطلوب.' });
+                        return;
+                    }
+
+                    const targetMember = await targetGuild.members.fetch(opener.id).catch(() => null);
+                    if (!targetMember) {
+                        await interaction.editReply({ content: '❌ يجب أن تكون عضواً في السيرفر للتقديم على الإدارة.' });
+                        return;
+                    }
+
+                    // التحقق من أنه ليس لديه الرتبة بالفعل
+                    if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
+                        await interaction.editReply({ content: '❌ أنت إداري بالفعل! لا يمكنك التقديم مرة أخرى.' });
+                        return;
+                    }
+
+                    // إرسال رسالة خاصة للمستخدم
+                    try {
+                        const dmEmbed = new EmbedBuilder()
+                            .setColor(0x808080)
+                            .setTitle('📝 متطلبات التقديم على الإدارة')
+                            .setDescription('للتقديم على الإدارة، يجب عليك:\n\n**1️⃣ وضع الشعار التالي في اسم حسابك:**\n```Ezz```\n\n**2️⃣ وضع أحد الكلمات التالية في البايو أو Pronouns:**\n```0ezz```\nأو\n```discord.gg```\n\nبعد الانتهاء من وضع الشعار والرابط، اضغط على زر "✅ انتهيت" للتحقق.')
+                            .setFooter({ text: 'تأكد من إتمام الخطوتين قبل الضغط على الزر' });
+
+                        const doneButton = new ButtonBuilder()
+                            .setCustomId(`staff_verify_${opener.id}`)
+                            .setLabel('✅ انتهيت')
+                            .setStyle(ButtonStyle.Success);
+
+                        const dmRow = new ActionRowBuilder().addComponents(doneButton);
+
+                        await opener.send({ embeds: [dmEmbed], components: [dmRow] });
+                        await interaction.editReply({ content: 'شيكك خاص يا حلو' });
+                    } catch (dmError) {
+                        console.error('فشل إرسال رسالة خاصة:', dmError);
+                        await interaction.editReply({ content: 'خاصك مقفل او انت عاطيني بلوك 😕 ' });
+                    }
+                    return;
+                }
+            }
+
+            // معالجة زر التحقق من التقديم
+            if (interaction.isButton() && interaction.customId.startsWith('staff_verify_')) {
+                const userId = interaction.customId.replace('staff_verify_', '');
+                
+                if (interaction.user.id !== userId) {
+                    await interaction.reply({ content: '❌ هذا الزر ليس لك!', ephemeral: true });
+                    return;
+                }
+
+                await interaction.deferReply({ ephemeral: true });
+
+                const TARGET_GUILD_ID = '1365347054196490316';
+                const STAFF_ROLE_ID = '1419306051164966964';
+                const REQUIRED_LOGO = 'Ezz';
+                const REQUIRED_KEYWORDS = ['0ezz', 'discord.gg'];
+
+                try {
+                    // جلب معلومات المستخدم المحدثة
+                    const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID);
+                    const targetMember = await targetGuild.members.fetch(userId);
+                    
+                    // التحقق من أنه لا يملك الرتبة
+                    if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
+                        await interaction.editReply({ content: 'يزم انت اداري اصلا تبي تصير اداري مره ثانيه تستعبط ؟؟' });
+                        return;
+                    }
+
+                    const userName = targetMember.nickname || targetMember.user.globalName || targetMember.user.username;
+                    const userBio = (targetMember.user.bio || '').toLowerCase();
+                    const userPronouns = (targetMember.user.pronouns || '').toLowerCase();
+
+                    let errors = [];
+
+                    // التحقق من وجود الشعار في الاسم
+                    if (!userName.includes(REQUIRED_LOGO)) {
+                        errors.push(`❌ الشعار "${REQUIRED_LOGO}" غير موجود في اسمك`);
+                    }
+
+                    // التحقق من وجود أي من الكلمات المطلوبة في البايو أو pronouns
+                    const hasKeywordInBio = REQUIRED_KEYWORDS.some(keyword => userBio.includes(keyword));
+                    const hasKeywordInPronouns = REQUIRED_KEYWORDS.some(keyword => userPronouns.includes(keyword));
+
+                    if (!hasKeywordInBio && !hasKeywordInPronouns) {
+                        errors.push(`❌ يجب وضع إحدى الكلمات التالية في البايو أو Pronouns:\n"0ezz" أو "discord.gg"`);
+                    }
+
+                    if (errors.length > 0) {
+                        const errorEmbed = new EmbedBuilder()
+                            .setColor(0xFF0000)
+                            .setTitle('⚠️ متطلبات ناقصة')
+                            .setDescription('**ناقصك:**\n\n' + errors.join('\n\n'))
+                            .setFooter({ text: 'أكمل المتطلبات ثم اضغط الزر مرة أخرى' });
+
+                        await interaction.editReply({ embeds: [errorEmbed] });
+                        return;
+                    }
+
+                    // كل شيء صحيح، إعطاء الرتبة
+                    await targetMember.roles.add(STAFF_ROLE_ID);
+
+                    const successEmbed = new EmbedBuilder()
+                        .setColor(0x00FF00)
+                        .setTitle('🎉 تهانينا!')
+                        .setDescription(`✅ تم قبول طلبك وإعطائك رتبة الإدارة!\n\n**مرحباً بك في فريق الإدارة!**`)
+                        .setFooter({ text: 'نتمنى لك التوفيق في مهامك الإدارية' });
+
+                    await interaction.editReply({ embeds: [successEmbed] });
+
+                    // تعطيل الزر بعد النجاح
+                    const disabledButton = new ButtonBuilder()
+                        .setCustomId('staff_verify_done')
+                        .setLabel('✅ تم القبول')
+                        .setStyle(ButtonStyle.Success)
+                        .setDisabled(true);
+
+                    const disabledRow = new ActionRowBuilder().addComponents(disabledButton);
+                    await interaction.message.edit({ components: [disabledRow] });
+
+                } catch (error) {
+                    console.error('خطأ في التحقق من التقديم:', error);
+                    await interaction.editReply({ content: '❌ حدث خطأ أثناء التحقق. حاول مرة أخرى لاحقاً.' });
+                }
+            }
+            // =================================================================================
+            // --- نهاية نظام التقديم على الإدارة ---
+            // =================================================================================
+
+            if (interaction.isButton() && interaction.customId === 'ticket_claim') {
+                const member = interaction.member;
+                const channel = interaction.channel;
+
+                if (!member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+                    await interaction.reply({ content: 'ليس لديك الصلاحية لاستلام هذه التذكرة.', ephemeral: true });
+                    return;
+                }
+
+                await interaction.deferUpdate();
+
+                const newClaimCount = incrementClaimCount(member.id);
+
+                const disabledClaimBtn = new ButtonBuilder()
+                    .setCustomId('ticket_claim_disabled')
+                    .setLabel('تم الاستلام')
+                    .setStyle(ButtonStyle.Success)
+                    .setDisabled(true);
+
+                const originalCloseBtn = interaction.message.components[0].components.find(c => c.customId === 'ticket_close');
+                
+                const updatedRow = new ActionRowBuilder().addComponents(disabledClaimBtn, originalCloseBtn);
+
+                await interaction.message.edit({ components: [updatedRow] });
+
+                await channel.send({ content: `✅ تم استلام هذه التذكرة بواسطة ${member}.` });
+
+                try {
+                    await member.send({
+                        content: `لقد قمت باستلام تذكرة جديدة (${channel.name}).\n**إجمالي استلاماتك الآن هو: ${newClaimCount} تذكرة.**`
+                    });
+                } catch (dmError) {
+                    console.error(`فشل إرسال رسالة خاصة إلى ${member.user.tag}:`, dmError);
+                    await channel.send({ content: `تنبيه لـ ${member}: لم أتمكن من إرسال إحصائياتك على الخاص.` });
+                }
+            }
+
+            if (interaction.isButton() && interaction.customId === 'ticket_close') {
+                const channel = interaction.channel;
+                
+                let openerId = null;
+                try {
+                    const messages = await channel.messages.fetch({ limit: 1, after: 0 });
+                    const firstMessage = messages.first();
+                    const openerMention = firstMessage?.mentions?.users?.first();
+                    if (openerMention) {
+                        openerId = openerMention.id;
+                    }
+                } catch (fetchError) {
+                    console.error("لم أتمكن من جلب الرسالة الأولى للعثور على فاتح التذكرة.", fetchError);
+                }
+
+                await interaction.deferReply({ ephemeral: true });
+
+                try {
+                    if (openerId) {
+                        const user = await client.users.fetch(openerId).catch(() => null);
+                        if (user) {
+                            let transcript = `📋 **نسخة من التذكرة (Transcript)**\n`;
+                            transcript += `**السيرفر:** ${interaction.guild.name}\n`;
+                            transcript += `**القناة:** #${channel.name}\n`;
+                            transcript += `**تاريخ الإغلاق:** ${new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })}\n`;
+                            transcript += `**أغلقه:** ${interaction.user.tag}\n\n`;
+                            transcript += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+                            
+                            try {
+                                const fetchedMessages = await channel.messages.fetch({ limit: 100 });
+                                const sortedMessages = Array.from(fetchedMessages.values()).sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+                                
+                                for (const msg of sortedMessages) {
+                                    const date = new Date(msg.createdTimestamp).toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' });
+                                    transcript += `**[${date}]** ${msg.author.tag} ${msg.author.bot ? '(Bot)' : ''}\n`;
+                                    if (msg.content) transcript += `${msg.content}\n`;
+                                    if (msg.attachments.size > 0) {
+                                        msg.attachments.forEach(att => {
+                                            transcript += `📎 ${att.name || 'مرفق'}: ${att.url}\n`;
+                                        });
+                                    }
+                                    if (msg.embeds.length > 0) {
+                                        msg.embeds.forEach(embed => {
+                                            if (embed.title) transcript += `📌 **${embed.title}**\n`;
+                                            if (embed.description) transcript += `${embed.description}\n`;
+                                            if (embed.fields && embed.fields.length > 0) {
+                                                embed.fields.forEach(field => {
+                                                    transcript += `   • ${field.name}: ${field.value}\n`;
+                                                });
+                                            }
+                                        });
+                                    }
+                                    transcript += `\n`;
+                                }
+                            } catch (transcriptError) {
+                                transcript += `⚠️ تعذر جمع بعض الرسائل\n`;
+                            }
+                            
+                            transcript += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+                            transcript += `✅ تم إغلاق التذكرة بنجاح\n`;
+                            
+                            await user.send({ content: transcript }).catch(dmError => {
+                                console.error(`فشل إرسال نسخة التذكرة إلى ${user.tag}:`, dmError);
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.error('حدث خطأ أثناء إنشاء وإرسال نسخة التذكرة:', err);
+                }
+                
+                await channel.delete('Ticket closed by user').catch(deleteError => {
+                    console.error(`فشل حذف القناة #${channel.name}:`, deleteError);
+                });
+                await interaction.editReply({ content: 'تم حذف التذكرة بنجاح.' }).catch(() => {});
+                return;
+            }
+
+        } catch (error) {
+            console.error('An error occurred in InteractionCreate:', error);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: 'حدث خطأ أثناء تنفيذ هذا الأمر!', ephemeral: true });
+            } else {
+                await interaction.reply({ content: 'حدث خطأ أثناء تنفيذ هذا الأمر!', ephemeral: true });
+            }
+        }
+    });
+
+    client.login(process.env.DISCORD_TOKEN);
+}
+
+startBot(); (panelMsg) {
                     await panelMsg.edit({ embeds: [embed], components: [row] }).catch(() => {});
                     return;
                 }
@@ -432,340 +772,4 @@ async function startBot() {
                     return;
                 }
 
-                if (selectedValue === 'advertisement') {
-                    await createTicket('ads', '1419306155145953400', '1397022492090171392', {
-                        title: '📢 تذكرة إعلان',
-                        image: 'https://media.discordapp.net/attachments/1433832273538711612/1436075334565888010/image.png?ex=690e48e0&is=690cf760&hm=88ebb29ea8c00615c80da44823be56fd7d06367e88e4fb21980e1af0b7f543e0&=&format=webp&quality=lossless&width=963&height=320',
-                        color: 0x808080
-                    });
-                    return;
-                }
-            }
-            
-            if (interaction.isStringSelectMenu() && interaction.customId === 'advertisement_panel_select') {
-                const guild = interaction.guild;
-                const opener = interaction.user;
-                const selectedValue = interaction.values[0];
-
-                if (selectedValue === 'reset_menu') {
-                    await interaction.deferUpdate();
-                    return;
-                }
-
-                if (selectedValue === 'create_ad_ticket') {
-                    await interaction.deferReply({ ephemeral: true });
-
-                    const adsCategoryId = '1397022474159526050';
-                    const channelName = `ad-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
-                    
-                    const existingChannel = guild.channels.cache.find(ch => ch.name === channelName && ch.parentId === adsCategoryId);
-                    if (existingChannel) {
-                        await interaction.editReply({ content: `لديك بالفعل تذكرة إعلان مفتوحة: ${existingChannel}` });
-                        return;
-                    }
-
-                    const permissionOverwrites = [
-                        { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-                        { id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                        { id: '1419306155145953400', allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                    ];
-
-                    const ticketChannel = await guild.channels.create({
-                        name: channelName,
-                        type: ChannelType.GuildText,
-                        parent: adsCategoryId,
-                        permissionOverwrites,
-                        reason: `Advertisement ticket opened by ${opener.tag}`,
-                    });
-
-                    const ADS_TICKET_IMAGE = 'https://media.discordapp.net/attachments/1438037917124788267/1438581879270932601/Picsart_25-10-16_13-18-24-693.jpg?ex=691ff907&is=691ea787&hm=c582f8003a90f74f28e482e73473f43c0eb825d1ce8b82aef31c97b09a5a564b&=&format=webp&width=2615&height=872';
-                    
-                    const infoEmbed = new EmbedBuilder()
-                        .setColor(0x808080)
-                        .setTitle('📢 تذكرة إعلان')
-                        .setImage(ADS_TICKET_IMAGE)
-                        .setDescription(`${opener} تم فتح تذكرة الإعلان بنجاح.\n\nسيتم الرد عليك قريباً من قبل فريق الإدارة.`);
-                    
-                    const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-                    const row = new ActionRowBuilder().addComponents(closeBtn);
-                    
-                    await ticketChannel.send({ content: `<@&1419306155145953400>\n${opener}`, embeds: [infoEmbed], components: [row] });
-                    
-                    await interaction.editReply({ content: `تم إنشاء تذكرة الإعلان: ${ticketChannel}` });
-                    return;
-                }
-            }
-            
-            // =================================================================================
-            // --- نظام التقديم على الإدارة المحدث (عبر الرسائل الخاصة) ---
-            // =================================================================================
-            if (interaction.isStringSelectMenu() && interaction.customId === 'staff_application_select') {
-                const opener = interaction.user;
-                const selectedValue = interaction.values[0];
-
-                if (selectedValue === 'reset_menu') {
-                    await interaction.deferUpdate();
-                    return;
-                }
-
-                if (selectedValue === 'staff_application') {
-                    const STAFF_ROLE_ID = '1419306051164966964';
-                    const TARGET_GUILD_ID = '1365347054196490316';
-
-                    await interaction.deferReply({ ephemeral: true });
-
-                    // التحقق من أن المستخدم في السيرفر المستهدف
-                    const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
-                    if (!targetGuild) {
-                        await interaction.editReply({ content: '❌ حدث خطأ في الوصول إلى السيرفر المطلوب.' });
-                        return;
-                    }
-
-                    const targetMember = await targetGuild.members.fetch(opener.id).catch(() => null);
-                    if (!targetMember) {
-                        await interaction.editReply({ content: '❌ يجب أن تكون عضواً في السيرفر للتقديم على الإدارة.' });
-                        return;
-                    }
-
-                    // التحقق من أنه ليس لديه الرتبة بالفعل
-                    if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
-                        await interaction.editReply({ content: 'تقدم اداره و انت  اداري تستعبط ؟؟؟؟؟؟؟ يا كلبببببب لاتقهرنييييي' });
-                        return;
-                    }
-
-                    // إرسال رسالة خاصة للمستخدم
-                    try {
-                        const dmEmbed = new EmbedBuilder()
-                            .setColor(0x808080)
-                            .setTitle('📝 متطلبات التقديم على الإدارة')
-                            .setDescription('للتقديم على الإدارة، يجب عليك:\n\n**1️⃣ وضع الشعار التالي في اسم حسابك:**\n```Ezz```\n\n**2️⃣ وضع الرابط التالي في البايو الخاص بك:**\n```https://discord.gg/0ezz```\n\nبعد الانتهاء من وضع الشعار والرابط، اضغط على زر "✅ انتهيت" للتحقق.')
-                            .setFooter({ text: 'تأكد من إتمام الخطوتين قبل الضغط على الزر' });
-
-                        const doneButton = new ButtonBuilder()
-                            .setCustomId(`staff_verify_${opener.id}`)
-                            .setLabel('✅ انتهيت')
-                            .setStyle(ButtonStyle.Success);
-
-                        const dmRow = new ActionRowBuilder().addComponents(doneButton);
-
-                        await opener.send({ embeds: [dmEmbed], components: [dmRow] });
-                        await interaction.editReply({ content: 'شيكك خاص يا حلو' });
-                    } catch (dmError) {
-                        console.error('فشل إرسال رسالة خاصة:', dmError);
-                        await interaction.editReply({ content: 'خاصك مقفل او انت عاطيني بلوك 😕 ' });
-                    }
-                    return;
-                }
-            }
-
-            // معالجة زر التحقق من التقديم
-            if (interaction.isButton() && interaction.customId.startsWith('staff_verify_')) {
-                const userId = interaction.customId.replace('staff_verify_', '');
-                
-                if (interaction.user.id !== userId) {
-                    await interaction.reply({ content: '❌ هذا الزر ليس لك!', ephemeral: true });
-                    return;
-                }
-
-                await interaction.deferReply({ ephemeral: true });
-
-                const TARGET_GUILD_ID = '1365347054196490316';
-                const STAFF_ROLE_ID = '1419306051164966964';
-                const REQUIRED_LOGO = 'Ezz';
-                const REQUIRED_LINK = '0ezz';
-
-                try {
-                    // جلب معلومات المستخدم المحدثة
-                    const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID);
-                    const targetMember = await targetGuild.members.fetch(userId);
-                    
-                    // التحقق من أنه لا يملك الرتبة
-                    if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
-                        await interaction.editReply({ content: 'يزم انت اداري اصلا تبي تصير اداري مره ثانيه تستعبط ؟؟' });
-                        return;
-                    }
-
-                    const userName = targetMember.nickname || targetMember.user.globalName || targetMember.user.username;
-                    const userBio = targetMember.user.bio || '';
-
-                    let errors = [];
-
-                    // التحقق من وجود الشعار في الاسم
-                    if (!userName.includes(REQUIRED_LOGO)) {
-                        errors.push(`❌ الشعار "${REQUIRED_LOGO}" غير موجود في اسمك`);
-                    }
-
-                    // التحقق من وجود الرابط في البايو
-                    if (!userBio.includes(REQUIRED_LINK)) {
-                        errors.push(`❌ الرابط "${REQUIRED_LINK}" غير موجود في البايو الخاص بك`);
-                    }
-
-                    if (errors.length > 0) {
-                        const errorEmbed = new EmbedBuilder()
-                            .setColor(0xFF0000)
-                            .setTitle('⚠️ متطلبات ناقصة')
-                            .setDescription('**ناقصك:**\n\n' + errors.join('\n\n'))
-                            .setFooter({ text: 'أكمل المتطلبات ثم اضغط الزر مرة أخرى' });
-
-                        await interaction.editReply({ embeds: [errorEmbed] });
-                        return;
-                    }
-
-                    // كل شيء صحيح، إعطاء الرتبة
-                    await targetMember.roles.add(STAFF_ROLE_ID);
-
-                    const successEmbed = new EmbedBuilder()
-                        .setColor(0x00FF00)
-                        .setTitle('🎉 تهانينا!')
-                        .setDescription(`✅ تم قبول طلبك وإعطائك رتبة الإدارة!\n\n**مرحباً بك في فريق الإدارة!**`)
-                        .setFooter({ text: 'نتمنى لك التوفيق في مهامك الإدارية' });
-
-                    await interaction.editReply({ embeds: [successEmbed] });
-
-                    // تعطيل الزر بعد النجاح
-                    const disabledButton = new ButtonBuilder()
-                        .setCustomId('staff_verify_done')
-                        .setLabel('✅ تم القبول')
-                        .setStyle(ButtonStyle.Success)
-                        .setDisabled(true);
-
-                    const disabledRow = new ActionRowBuilder().addComponents(disabledButton);
-                    await interaction.message.edit({ components: [disabledRow] });
-
-                } catch (error) {
-                    console.error('خطأ في التحقق من التقديم:', error);
-                    await interaction.editReply({ content: '❌ حدث خطأ أثناء التحقق. حاول مرة أخرى لاحقاً.' });
-                }
-            }
-            // =================================================================================
-            // --- نهاية نظام التقديم على الإدارة ---
-            // =================================================================================
-
-            if (interaction.isButton() && interaction.customId === 'ticket_claim') {
-                const member = interaction.member;
-                const channel = interaction.channel;
-
-                if (!member.permissions.has(PermissionFlagsBits.ManageChannels)) {
-                    await interaction.reply({ content: 'ليس لديك الصلاحية لاستلام هذه التذكرة.', ephemeral: true });
-                    return;
-                }
-
-                await interaction.deferUpdate();
-
-                const newClaimCount = incrementClaimCount(member.id);
-
-                const disabledClaimBtn = new ButtonBuilder()
-                    .setCustomId('ticket_claim_disabled')
-                    .setLabel('تم الاستلام')
-                    .setStyle(ButtonStyle.Success)
-                    .setDisabled(true);
-
-                const originalCloseBtn = interaction.message.components[0].components.find(c => c.customId === 'ticket_close');
-                
-                const updatedRow = new ActionRowBuilder().addComponents(disabledClaimBtn, originalCloseBtn);
-
-                await interaction.message.edit({ components: [updatedRow] });
-
-                await channel.send({ content: `✅ تم استلام هذه التذكرة بواسطة ${member}.` });
-
-                try {
-                    await member.send({
-                        content: `لقد قمت باستلام تذكرة جديدة (${channel.name}).\n**إجمالي استلاماتك الآن هو: ${newClaimCount} تذكرة.**`
-                    });
-                } catch (dmError) {
-                    console.error(`فشل إرسال رسالة خاصة إلى ${member.user.tag}:`, dmError);
-                    await channel.send({ content: `تنبيه لـ ${member}: لم أتمكن من إرسال إحصائياتك على الخاص.` });
-                }
-            }
-
-            if (interaction.isButton() && interaction.customId === 'ticket_close') {
-                const channel = interaction.channel;
-                
-                let openerId = null;
-                try {
-                    const messages = await channel.messages.fetch({ limit: 1, after: 0 });
-                    const firstMessage = messages.first();
-                    const openerMention = firstMessage?.mentions?.users?.first();
-                    if (openerMention) {
-                        openerId = openerMention.id;
-                    }
-                } catch (fetchError) {
-                    console.error("لم أتمكن من جلب الرسالة الأولى للعثور على فاتح التذكرة.", fetchError);
-                }
-
-                await interaction.deferReply({ ephemeral: true });
-
-                try {
-                    if (openerId) {
-                        const user = await client.users.fetch(openerId).catch(() => null);
-                        if (user) {
-                            let transcript = `📋 **نسخة من التذكرة (Transcript)**\n`;
-                            transcript += `**السيرفر:** ${interaction.guild.name}\n`;
-                            transcript += `**القناة:** #${channel.name}\n`;
-                            transcript += `**تاريخ الإغلاق:** ${new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })}\n`;
-                            transcript += `**أغلقه:** ${interaction.user.tag}\n\n`;
-                            transcript += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-                            
-                            try {
-                                const fetchedMessages = await channel.messages.fetch({ limit: 100 });
-                                const sortedMessages = Array.from(fetchedMessages.values()).sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-                                
-                                for (const msg of sortedMessages) {
-                                    const date = new Date(msg.createdTimestamp).toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' });
-                                    transcript += `**[${date}]** ${msg.author.tag} ${msg.author.bot ? '(Bot)' : ''}\n`;
-                                    if (msg.content) transcript += `${msg.content}\n`;
-                                    if (msg.attachments.size > 0) {
-                                        msg.attachments.forEach(att => {
-                                            transcript += `📎 ${att.name || 'مرفق'}: ${att.url}\n`;
-                                        });
-                                    }
-                                    if (msg.embeds.length > 0) {
-                                        msg.embeds.forEach(embed => {
-                                            if (embed.title) transcript += `📌 **${embed.title}**\n`;
-                                            if (embed.description) transcript += `${embed.description}\n`;
-                                            if (embed.fields && embed.fields.length > 0) {
-                                                embed.fields.forEach(field => {
-                                                    transcript += `   • ${field.name}: ${field.value}\n`;
-                                                });
-                                            }
-                                        });
-                                    }
-                                    transcript += `\n`;
-                                }
-                            } catch (transcriptError) {
-                                transcript += `⚠️ تعذر جمع بعض الرسائل\n`;
-                            }
-                            
-                            transcript += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-                            transcript += `✅ تم إغلاق التذكرة بنجاح\n`;
-                            
-                            await user.send({ content: transcript }).catch(dmError => {
-                                console.error(`فشل إرسال نسخة التذكرة إلى ${user.tag}:`, dmError);
-                            });
-                        }
-                    }
-                } catch (err) {
-                    console.error('حدث خطأ أثناء إنشاء وإرسال نسخة التذكرة:', err);
-                }
-                
-                await channel.delete('Ticket closed by user').catch(deleteError => {
-                    console.error(`فشل حذف القناة #${channel.name}:`, deleteError);
-                });
-                await interaction.editReply({ content: 'تم حذف التذكرة بنجاح.' }).catch(() => {});
-                return;
-            }
-
-        } catch (error) {
-            console.error('An error occurred in InteractionCreate:', error);
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: 'حدث خطأ أثناء تنفيذ هذا الأمر!', ephemeral: true });
-            } else {
-                await interaction.reply({ content: 'حدث خطأ أثناء تنفيذ هذا الأمر!', ephemeral: true });
-            }
-        }
-    });
-
-    client.login(process.env.DISCORD_TOKEN);
-}
-
-startBot();
+                if
