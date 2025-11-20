@@ -520,21 +520,41 @@ async function startBot() {
                         '0ezz' // البحث عن الكلمة نفسها حتى لو بدون discord.gg
                     ];
                     
-                    // تنظيف البايو من المسافات الزائدة والأحرف الخاصة
-                    const cleanBio = userBio ? userBio.replace(/\s+/g, ' ').trim() : '';
+                    // تنظيف البايو من المسافات الزائدة والأحرف الخاصة و markdown
+                    let cleanBio = userBio ? userBio.trim() : '';
                     
+                    // إزالة markdown links مثل [text](url) وتحويلها لنص عادي
+                    cleanBio = cleanBio.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$2'); // [text](url) -> url
+                    // إزالة markdown formatting
+                    cleanBio = cleanBio.replace(/\*\*/g, ''); // **bold**
+                    cleanBio = cleanBio.replace(/\*/g, ''); // *italic*
+                    cleanBio = cleanBio.replace(/__/g, ''); // __underline__
+                    cleanBio = cleanBio.replace(/_/g, ''); // _italic_
+                    cleanBio = cleanBio.replace(/~~/g, ''); // ~~strikethrough~~
+                    cleanBio = cleanBio.replace(/`/g, ''); // `code`
+                    // تنظيف المسافات
+                    cleanBio = cleanBio.replace(/\s+/g, ' ').trim();
+                    // تحويل لحروف صغيرة للفحص
+                    const lowerBio = cleanBio.toLowerCase();
+                    
+                    console.log(`[فحص البايو] ========== البايو الأصلي ==========`);
+                    console.log(userBio);
+                    console.log(`[فحص البايو] ========== البايو بعد التنظيف ==========`);
+                    console.log(cleanBio);
+                    console.log(`[فحص البايو] ========== البايو للفحص (lowercase) ==========`);
+                    console.log(lowerBio);
+                    console.log(`[فحص البايو] طول البايو: ${cleanBio.length} حرف`);
                     console.log(`[فحص البايو] بدء فحص شامل للرابط...`);
-                    console.log(`[فحص البايو] البايو بعد التنظيف (${cleanBio.length} حرف): "${cleanBio}"`);
                     
                     // فحص شامل - نبحث عن أي صيغة من الرابط أو حتى كلمة 0ezz
                     let hasLinkInBio = false;
                     let foundLink = '';
                     
-                    if (cleanBio) {
+                    if (lowerBio) {
                         // فحص شامل لكل الصيغ
                         for (const link of linkVariations) {
                             const searchLink = link.toLowerCase();
-                            if (cleanBio.includes(searchLink)) {
+                            if (lowerBio.includes(searchLink)) {
                                 hasLinkInBio = true;
                                 foundLink = link;
                                 console.log(`[فحص البايو] ✅ تم العثور على الرابط/الكلمة بصيغة: "${link}"`);
@@ -544,22 +564,34 @@ async function startBot() {
                         
                         // فحص إضافي: البحث عن "0ezz" حتى لو كانت جزء من كلمة أخرى
                         if (!hasLinkInBio) {
-                            const zeroezzIndex = cleanBio.indexOf('0ezz');
+                            const zeroezzIndex = lowerBio.indexOf('0ezz');
                             if (zeroezzIndex !== -1) {
                                 hasLinkInBio = true;
                                 foundLink = '0ezz (موجود في البايو)';
                                 console.log(`[فحص البايو] ✅ تم العثور على "0ezz" في البايو في الموضع ${zeroezzIndex}`);
+                                console.log(`[فحص البايو] السياق: "...${lowerBio.substring(Math.max(0, zeroezzIndex - 20), zeroezzIndex + 24)}..."`);
                             }
                         }
                         
                         // فحص إضافي: البحث عن "discord" و "0ezz" منفصلين
                         if (!hasLinkInBio) {
-                            const hasDiscord = cleanBio.includes('discord');
-                            const hasZeroezz = cleanBio.includes('0ezz');
+                            const hasDiscord = lowerBio.includes('discord');
+                            const hasZeroezz = lowerBio.includes('0ezz');
                             if (hasDiscord && hasZeroezz) {
                                 hasLinkInBio = true;
                                 foundLink = 'discord + 0ezz (موجودان منفصلين)';
                                 console.log(`[فحص البايو] ✅ تم العثور على "discord" و "0ezz" في البايو`);
+                            }
+                        }
+                        
+                        // فحص إضافي: البحث عن "discord.gg" و "0ezz" حتى لو منفصلين
+                        if (!hasLinkInBio) {
+                            const hasDiscordGG = lowerBio.includes('discord.gg') || lowerBio.includes('discord.com');
+                            const hasZeroezz = lowerBio.includes('0ezz');
+                            if (hasDiscordGG && hasZeroezz) {
+                                hasLinkInBio = true;
+                                foundLink = 'discord.gg/discord.com + 0ezz (موجودان منفصلين)';
+                                console.log(`[فحص البايو] ✅ تم العثور على "discord.gg/com" و "0ezz" في البايو`);
                             }
                         }
                     }
