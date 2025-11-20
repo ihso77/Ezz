@@ -8,7 +8,6 @@ import { addNickname } from './utils/nicknameStore.js';
 // --- إعدادات المسارات الأساسية ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 // =================================================================================
 // --- وظائف إدارة ملف claim.json ---
 // =================================================================================
@@ -973,7 +972,7 @@ async function startBot() {
             // معالجة ذكر البوت عندما يكون الوضع مفعّل
             if (isDndModeEnabled() && message.mentions.has(client.user)) {
                 const boxName = message.author.globalName || message.author.username;
-                await message.reply(`**${boxName}** حالياً لا تزعجه`);
+                await message.reply(`**${boxName}** ناييمممم لاتزعجه خلييه`);
                 return;
             }
             // =================================================================================
