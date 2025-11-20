@@ -172,6 +172,50 @@ function resetStaffWarnings(userId) {
 // =================================================================================
 
 // =================================================================================
+// --- وظائف إدارة ملف dndMode.json (لوضع لا تزعجه) ---
+// =================================================================================
+
+const dndModeFilePath = path.join(__dirname, 'dndMode.json');
+
+// التأكد من وجود ملف dndMode.json عند بدء التشغيل
+if (!existsSync(dndModeFilePath)) {
+    console.log('[إعداد] ملف dndMode.json غير موجود، سيتم إنشاؤه.');
+    writeFileSync(dndModeFilePath, JSON.stringify({ enabled: false }));
+}
+
+function readDndMode() {
+    try {
+        const data = readFileSync(dndModeFilePath, 'utf8');
+        return data ? JSON.parse(data) : { enabled: false };
+    } catch (error) {
+        console.error('خطأ في قراءة ملف dndMode.json:', error);
+        return { enabled: false };
+    }
+}
+
+function writeDndMode(data) {
+    try {
+        writeFileSync(dndModeFilePath, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('خطأ في كتابة ملف dndMode.json:', error);
+    }
+}
+
+function setDndMode(enabled) {
+    writeDndMode({ enabled });
+    return enabled;
+}
+
+function isDndModeEnabled() {
+    const data = readDndMode();
+    return data.enabled === true;
+}
+
+// =================================================================================
+// --- نهاية وظائف إدارة ملف dndMode.json ---
+// =================================================================================
+
+// =================================================================================
 // --- إعدادات الردود التلقائية ---
 // =================================================================================
 
