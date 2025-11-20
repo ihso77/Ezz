@@ -399,7 +399,7 @@ async function startBot() {
                     const successEmbed = new EmbedBuilder()
                         .setColor(0x00FF00)
                         .setTitle('تم القبول')
-                        .setDescription(`تم قبول طلبك واعطائك رتبة الإدارة\n\nمرحبا بك في فريق الإدارة`)
+                        .setDescription(`تم قبولك\n\nنورت فريق الإدارة`)
                         .setFooter({ text: 'نتمنى لك التوفيق' });
 
                     await interaction.editReply({ embeds: [successEmbed] });
