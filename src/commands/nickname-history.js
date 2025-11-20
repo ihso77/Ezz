@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { getNicknameHistory } from '../../utils/nicknameStore.js';
+import { getNicknameHistory } from '../utils/nicknameStore.js';
 
 export default {
 	data: new SlashCommandBuilder()
