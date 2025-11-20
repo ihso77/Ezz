@@ -108,6 +108,70 @@ function updateApplicationAcceptance(userId, hasLogo) {
 // =================================================================================
 
 // =================================================================================
+// --- وظائف إدارة ملف staffWarnings.json (للتحذيرات) ---
+// =================================================================================
+
+const staffWarningsFilePath = path.join(__dirname, 'staffWarnings.json');
+
+// التأكد من وجود ملف staffWarnings.json عند بدء التشغيل
+if (!existsSync(staffWarningsFilePath)) {
+    console.log('[إعداد] ملف staffWarnings.json غير موجود، سيتم إنشاؤه.');
+    writeFileSync(staffWarningsFilePath, JSON.stringify({}));
+}
+
+function readStaffWarnings() {
+    try {
+        const data = readFileSync(staffWarningsFilePath, 'utf8');
+        return data ? JSON.parse(data) : {};
+    } catch (error) {
+        console.error('خطأ في قراءة ملف staffWarnings.json:', error);
+        return {};
+    }
+}
+
+function writeStaffWarnings(data) {
+    try {
+        writeFileSync(staffWarningsFilePath, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('خطأ في كتابة ملف staffWarnings.json:', error);
+    }
+}
+
+function addStaffWarning(userId) {
+    const warnings = readStaffWarnings();
+    if (!warnings[userId]) {
+        warnings[userId] = {
+            count: 0,
+            warnings: []
+        };
+    }
+    warnings[userId].count = (warnings[userId].count || 0) + 1;
+    warnings[userId].warnings.push({
+        timestamp: Date.now(),
+        date: new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Riyadh' })
+    });
+    writeStaffWarnings(warnings);
+    return warnings[userId].count;
+}
+
+function getStaffWarningCount(userId) {
+    const warnings = readStaffWarnings();
+    return warnings[userId]?.count || 0;
+}
+
+function resetStaffWarnings(userId) {
+    const warnings = readStaffWarnings();
+    if (warnings[userId]) {
+        delete warnings[userId];
+        writeStaffWarnings(warnings);
+    }
+}
+
+// =================================================================================
+// --- نهاية وظائف إدارة ملف staffWarnings.json ---
+// =================================================================================
+
+// =================================================================================
 // --- إعدادات الردود التلقائية ---
 // =================================================================================
 
@@ -342,7 +406,7 @@ async function startBot() {
             }
             
             // =================================================================================
-            // --- نظام التقديم على الإدارة المحدث (عبر الرسائل الخاصة) ---
+            // --- نظام التقديم على الإدارة (نظام التذكرة القديم) ---
             // =================================================================================
             if (interaction.isStringSelectMenu() && interaction.customId === 'staff_application_select') {
                 const opener = interaction.user;
@@ -359,7 +423,6 @@ async function startBot() {
 
                     await interaction.deferReply({ ephemeral: true });
 
-                    // التحقق من أن المستخدم في السيرفر المستهدف
                     const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
                     if (!targetGuild) {
                         await interaction.editReply({ content: 'حدث خطأ في الوصول للسيرفر' });
@@ -372,322 +435,51 @@ async function startBot() {
                         return;
                     }
 
-                    // التحقق من أنه ليس لديه الرتبة بالفعل
                     if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
                         await interaction.editReply({ content: 'انت اداري اصلا ما تقدر تتقدم مرة ثانية' });
                         return;
                     }
 
-                    // حفظ وقت التقديم
-                    saveApplicationTime(opener.id);
-
-                    // إرسال رسالة خاصة للمستخدم
-                    try {
-                        const dmEmbed = new EmbedBuilder()
-                            .setColor(0x808080)
-                            .setTitle('متطلبات التقديم على الإدارة')
-                            .setDescription('عشان تتقدم على الإدارة لازم:\n\n**1. حط الشعار هذا في اسم حسابك الحقيقي (username):**\n```Ezz```\n\n**2. حط الرابط هذا في البايو (bio) حق حسابك:**\n```https://discord.gg/0ezz```\n\nبعد ما تحط الشعار والرابط اضغط على زر "انتهيت" عشان نتأكد.')
-                            .setFooter({ text: 'تأكد انك حطيت الشعار في username والرابط في البايو قبل ما تضغط الزر' });
-
-                        const doneButton = new ButtonBuilder()
-                            .setCustomId(`staff_verify_${opener.id}`)
-                            .setLabel('انتهيت')
-                            .setStyle(ButtonStyle.Success);
-
-                        const dmRow = new ActionRowBuilder().addComponents(doneButton);
-
-                        await opener.send({ embeds: [dmEmbed], components: [dmRow] });
-                        await interaction.editReply({ content: 'شيك خاصك' });
-                    } catch (dmError) {
-                        console.error('فشل إرسال رسالة خاصة:', dmError);
-                        await interaction.editReply({ content: 'خاصك مقفل او انت عاطيني بلوك' });
-                    }
-                    return;
-                }
-            }
-
-            // معالجة زر التحقق من التقديم
-            if (interaction.isButton() && interaction.customId.startsWith('staff_verify_')) {
-                const userId = interaction.customId.replace('staff_verify_', '');
-                
-                if (interaction.user.id !== userId) {
-                    await interaction.reply({ content: 'هذا الزر مو لك', ephemeral: true });
-                    return;
-                }
-
-                await interaction.deferReply({ ephemeral: true });
-
-                const TARGET_GUILD_ID = '1365347054196490316';
-                const STAFF_ROLE_ID = '1419306051164966964';
-                const REQUIRED_LOGO = 'Ezz';
-                const REQUIRED_LINK = 'discord.gg/0ezz';
-
-                try {
-                    // جلب معلومات المستخدم المحدثة
-                    const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID);
-                    const targetMember = await targetGuild.members.fetch(userId, { force: true });
-                    const user = await client.users.fetch(userId, { force: true });
+                    // فتح تذكرة للتقديم
+                    const staffCategoryId = '1397022492090171392'; // نفس category التذاكر
+                    const channelName = `staff-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
                     
-                    // التحقق من أنه لا يملك الرتبة
-                    if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
-                        await interaction.editReply({ content: 'انت اداري اصلا تبي تصير اداري مرة ثانية' });
+                    const existingChannel = targetGuild.channels.cache.find(ch => ch.name === channelName && ch.parentId === staffCategoryId);
+                    if (existingChannel) {
+                        await interaction.editReply({ content: `لديك بالفعل تذكرة تقديم مفتوحة: ${existingChannel}` });
                         return;
                     }
 
-                    // جلب الأسماء الحقيقية (مو nickname)
-                    const realName = user.globalName || user.username;
-                    const nickname = targetMember.nickname;
-                    
-                    // جلب البايو باستخدام REST API مع محاولات متعددة
-                    let userBio = '';
-                    const maxAttempts = 3;
-                    const delayBetweenAttempts = 2000; // 2 ثانية بين كل محاولة
-                    
-                    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-                        try {
-                            console.log(`[فحص البايو] محاولة ${attempt}/${maxAttempts} لجلب البايو للمستخدم ${userId}...`);
-                            
-                            const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-                            const userData = await rest.get(Routes.user(userId));
-                            
-                            if (userData && typeof userData === 'object') {
-                                // البايو موجود في userData.bio
-                                if (userData.bio) {
-                                    userBio = String(userData.bio).toLowerCase().trim();
-                                    console.log(`[فحص البايو] ✅ تم جلب البايو بنجاح في المحاولة ${attempt}`);
-                                    console.log(`[فحص البايو] طول البايو: ${userBio.length} حرف`);
-                                    console.log(`[فحص البايو] ========== البايو الكامل ==========`);
-                                    console.log(userBio);
-                                    console.log(`[فحص البايو] ==================================`);
-                                    break; // نجحنا، نخرج من الحلقة
-                                } else {
-                                    console.log(`[فحص البايو] البايو فارغ في المحاولة ${attempt}`);
-                                }
-                            } else {
-                                console.log(`[فحص البايو] لم يتم جلب بيانات المستخدم بشكل صحيح في المحاولة ${attempt}`);
-                            }
-                        } catch (restError) {
-                            console.error(`[فحص البايو] خطأ في المحاولة ${attempt}:`, restError.message || restError);
-                            
-                            // إذا كانت المحاولة الأخيرة، نجرب user object
-                            if (attempt === maxAttempts) {
-                                try {
-                                    if (user.bio !== undefined && user.bio !== null) {
-                                        userBio = String(user.bio).toLowerCase().trim();
-                                        console.log(`[فحص البايو] تم جلب البايو من user object كبديل`);
-                                        console.log(`[فحص البايو] ========== البايو الكامل ==========`);
-                                        console.log(userBio);
-                                        console.log(`[فحص البايو] ==================================`);
-                                    }
-                                } catch (fallbackError) {
-                                    console.error('[فحص البايو] خطأ في جلب البايو من user object:', fallbackError);
-                                }
-                            }
-                        }
-                        
-                        // انتظار قبل المحاولة التالية (ما عدا المحاولة الأخيرة)
-                        if (attempt < maxAttempts && !userBio) {
-                            console.log(`[فحص البايو] انتظار ${delayBetweenAttempts}ms قبل المحاولة التالية...`);
-                            await new Promise(resolve => setTimeout(resolve, delayBetweenAttempts));
-                        }
-                    }
-                    
-                    let errors = [];
-
-                    // التحقق من وجود الشعار في الاسم الحقيقي فقط (مو nickname)
-                    const hasLogoInRealName = realName && realName.includes(REQUIRED_LOGO);
-                    const hasLogoInNickname = nickname && nickname.includes(REQUIRED_LOGO);
-                    
-                    if (!hasLogoInRealName) {
-                        if (hasLogoInNickname) {
-                            errors.push(`الشعار "${REQUIRED_LOGO}" موجود في nickname بس، لازم يكون في اسم حسابك الحقيقي (username) مو في nickname`);
-                        } else {
-                            errors.push(`الشعار "${REQUIRED_LOGO}" مو موجود في اسم حسابك الحقيقي`);
-                        }
-                    }
-
-                    // التحقق من وجود الرابط في البايو (فحص شامل جداً)
-                    const linkVariations = [
-                        'discord.gg/0ezz',
-                        'https://discord.gg/0ezz',
-                        'http://discord.gg/0ezz',
-                        'discord.com/invite/0ezz',
-                        'https://discord.com/invite/0ezz',
-                        'http://discord.com/invite/0ezz',
-                        'discord.com/0ezz',
-                        'www.discord.gg/0ezz',
-                        'www.discord.com/0ezz',
-                        '0ezz' // البحث عن الكلمة نفسها حتى لو بدون discord.gg
+                    const permissionOverwrites = [
+                        { id: targetGuild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
+                        { id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                        { id: STAFF_ROLE_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
                     ];
+
+                    const ticketChannel = await targetGuild.channels.create({
+                        name: channelName,
+                        type: ChannelType.GuildText,
+                        parent: staffCategoryId,
+                        permissionOverwrites,
+                        reason: `Staff application ticket opened by ${opener.tag}`,
+                    });
+
+                    const STAFF_TICKET_IMAGE = 'https://media.discordapp.net/attachments/1433832273538711612/1436075334565888010/image.png?ex=690e48e0&is=690cf760&hm=88ebb29ea8c00615c80da44823be56fd7d06367e88e4fb21980e1af0b7f543e0&=&format=webp&quality=lossless&width=963&height=320';
                     
-                    // تنظيف البايو من المسافات الزائدة والأحرف الخاصة و markdown
-                    let cleanBio = userBio ? userBio.trim() : '';
+                    const infoEmbed = new EmbedBuilder()
+                        .setColor(0x808080)
+                        .setTitle('تقديم إدارة')
+                        .setImage(STAFF_TICKET_IMAGE)
+                        .setDescription(`${opener} تم فتح تذكرة التقديم على الإدارة بنجاح.\n\nسيتم الرد عليك قريباً من قبل فريق الإدارة.`);
                     
-                    // إزالة markdown links مثل [text](url) وتحويلها لنص عادي
-                    cleanBio = cleanBio.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$2'); // [text](url) -> url
-                    // إزالة markdown formatting
-                    cleanBio = cleanBio.replace(/\*\*/g, ''); // **bold**
-                    cleanBio = cleanBio.replace(/\*/g, ''); // *italic*
-                    cleanBio = cleanBio.replace(/__/g, ''); // __underline__
-                    cleanBio = cleanBio.replace(/_/g, ''); // _italic_
-                    cleanBio = cleanBio.replace(/~~/g, ''); // ~~strikethrough~~
-                    cleanBio = cleanBio.replace(/`/g, ''); // `code`
-                    // تنظيف المسافات
-                    cleanBio = cleanBio.replace(/\s+/g, ' ').trim();
-                    // تحويل لحروف صغيرة للفحص
-                    const lowerBio = cleanBio.toLowerCase();
+                    const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
+                    const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('استلام').setStyle(ButtonStyle.Primary);
+                    const row = new ActionRowBuilder().addComponents(claimBtn, closeBtn);
                     
-                    console.log(`[فحص البايو] ========== البايو الأصلي ==========`);
-                    console.log(userBio);
-                    console.log(`[فحص البايو] ========== البايو بعد التنظيف ==========`);
-                    console.log(cleanBio);
-                    console.log(`[فحص البايو] ========== البايو للفحص (lowercase) ==========`);
-                    console.log(lowerBio);
-                    console.log(`[فحص البايو] طول البايو: ${cleanBio.length} حرف`);
-                    console.log(`[فحص البايو] بدء فحص شامل للرابط...`);
+                    await ticketChannel.send({ content: `<@&${STAFF_ROLE_ID}>\n${opener}`, embeds: [infoEmbed], components: [row] });
                     
-                    // فحص شامل - نبحث عن أي صيغة من الرابط أو حتى كلمة 0ezz
-                    let hasLinkInBio = false;
-                    let foundLink = '';
-                    
-                    if (lowerBio) {
-                        // فحص شامل لكل الصيغ
-                        for (const link of linkVariations) {
-                            const searchLink = link.toLowerCase();
-                            if (lowerBio.includes(searchLink)) {
-                                hasLinkInBio = true;
-                                foundLink = link;
-                                console.log(`[فحص البايو] ✅ تم العثور على الرابط/الكلمة بصيغة: "${link}"`);
-                                break;
-                            }
-                        }
-                        
-                        // فحص إضافي: البحث عن "0ezz" حتى لو كانت جزء من كلمة أخرى
-                        if (!hasLinkInBio) {
-                            const zeroezzIndex = lowerBio.indexOf('0ezz');
-                            if (zeroezzIndex !== -1) {
-                                hasLinkInBio = true;
-                                foundLink = '0ezz (موجود في البايو)';
-                                console.log(`[فحص البايو] ✅ تم العثور على "0ezz" في البايو في الموضع ${zeroezzIndex}`);
-                                console.log(`[فحص البايو] السياق: "...${lowerBio.substring(Math.max(0, zeroezzIndex - 20), zeroezzIndex + 24)}..."`);
-                            }
-                        }
-                        
-                        // فحص إضافي: البحث عن "discord" و "0ezz" منفصلين
-                        if (!hasLinkInBio) {
-                            const hasDiscord = lowerBio.includes('discord');
-                            const hasZeroezz = lowerBio.includes('0ezz');
-                            if (hasDiscord && hasZeroezz) {
-                                hasLinkInBio = true;
-                                foundLink = 'discord + 0ezz (موجودان منفصلين)';
-                                console.log(`[فحص البايو] ✅ تم العثور على "discord" و "0ezz" في البايو`);
-                            }
-                        }
-                        
-                        // فحص إضافي: البحث عن "discord.gg" و "0ezz" حتى لو منفصلين
-                        if (!hasLinkInBio) {
-                            const hasDiscordGG = lowerBio.includes('discord.gg') || lowerBio.includes('discord.com');
-                            const hasZeroezz = lowerBio.includes('0ezz');
-                            if (hasDiscordGG && hasZeroezz) {
-                                hasLinkInBio = true;
-                                foundLink = 'discord.gg/discord.com + 0ezz (موجودان منفصلين)';
-                                console.log(`[فحص البايو] ✅ تم العثور على "discord.gg/com" و "0ezz" في البايو`);
-                            }
-                        }
-                    }
-                    
-                    if (!cleanBio || cleanBio.trim() === '') {
-                        errors.push(`البايو (bio) حق حسابك فارغ. لازم تحط الرابط "${REQUIRED_LINK}" في البايو`);
-                    } else if (!hasLinkInBio) {
-                        console.log(`[فحص البايو] ❌ الرابط غير موجود بعد فحص شامل`);
-                        console.log(`[فحص البايو] البايو الكامل للفحص:`);
-                        console.log(JSON.stringify(cleanBio));
-                        errors.push(`الرابط "${REQUIRED_LINK}" مو موجود في البايو (bio) حق حسابك\n\nالبايو الحالي: ${cleanBio.length > 300 ? cleanBio.substring(0, 300) + '...' : cleanBio}`);
-                    } else {
-                        console.log(`[فحص البايو] ✅ تم العثور على الرابط/الكلمة "${foundLink}" في البايو للمستخدم ${userId}`);
-                    }
-
-                    if (errors.length > 0) {
-                        const errorEmbed = new EmbedBuilder()
-                            .setColor(0xFF0000)
-                            .setTitle('متطلبات ناقصة')
-                            .setDescription('**ناقصك:**\n\n' + errors.join('\n\n'))
-                            .setFooter({ text: 'اكمل المتطلبات وبعدين اضغط الزر مرة ثانية' });
-
-                        await interaction.editReply({ embeds: [errorEmbed] });
-                        return;
-                    }
-
-                    // جلب معلومات التقديم
-                    const applicationInfo = readStaffApplications()[userId];
-                    const appliedAt = applicationInfo?.appliedAt || Date.now();
-                    const acceptedAt = Date.now();
-
-                    // حفظ معلومات القبول
-                    updateApplicationAcceptance(userId, hasLogoInRealName && hasLinkInBio);
-
-                    // كل شيء صحيح، إعطاء الرتبة
-                    await targetMember.roles.add(STAFF_ROLE_ID);
-
-                    const successEmbed = new EmbedBuilder()
-                        .setColor(0x00FF00)
-                        .setTitle('تم القبول')
-                        .setDescription(`تم قبول طلبك واعطائك رتبة الإدارة\n\nمرحبا بك في فريق الإدارة`)
-                        .setFooter({ text: 'نتمنى لك التوفيق' });
-
-                    await interaction.editReply({ embeds: [successEmbed] });
-
-                    // تعطيل الزر بعد النجاح
-                    const disabledButton = new ButtonBuilder()
-                        .setCustomId('staff_verify_done')
-                        .setLabel('تم القبول')
-                        .setStyle(ButtonStyle.Success)
-                        .setDisabled(true);
-
-                    const disabledRow = new ActionRowBuilder().addComponents(disabledButton);
-                    await interaction.message.edit({ components: [disabledRow] });
-
-                    // إرسال رسالة في القناة المحددة
-                    try {
-                        const LOG_CHANNEL_ID = '1441073379011592262';
-                        const logChannel = await client.channels.fetch(LOG_CHANNEL_ID).catch(() => null);
-                        
-                        if (logChannel) {
-                            const appliedDate = new Date(appliedAt).toLocaleString('ar-SA', { 
-                                timeZone: 'Asia/Riyadh',
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit'
-                            });
-                            
-                            const acceptedDate = new Date(acceptedAt).toLocaleString('ar-SA', { 
-                                timeZone: 'Asia/Riyadh',
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                second: '2-digit'
-                            });
-
-                            const logEmbed = new EmbedBuilder()
-                                .setColor(0x00FF00)
-                                .setTitle('تم قبول إداري جديد')
-                                .setDescription(`${user}\n\n**وقت التقديم:** ${appliedDate}\n**وقت القبول:** ${acceptedDate}\n**الشعار:** ${hasLogoInRealName ? 'موجود في الاسم الحقيقي' : 'غير موجود'}\n**الرابط:** ${hasLinkInBio ? 'موجود في البايو' : 'غير موجود'}`)
-                                .setTimestamp();
-
-                            await logChannel.send({ content: `${user}`, embeds: [logEmbed] });
-                        }
-                    } catch (logError) {
-                        console.error('خطأ في إرسال رسالة القبول:', logError);
-                    }
-
-                } catch (error) {
-                    console.error('خطأ في التحقق من التقديم:', error);
-                    await interaction.editReply({ content: 'حدث خطأ اثناء التحقق. حاول مرة ثانية بعدين' });
+                    await interaction.editReply({ content: `تم إنشاء تذكرة التقديم: ${ticketChannel}` });
+                    return;
                 }
             }
             // =================================================================================
