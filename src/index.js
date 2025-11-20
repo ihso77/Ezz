@@ -529,7 +529,7 @@ async function startBot() {
 
                     // التحقق من أنه ليس لديه الرتبة بالفعل
                     if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
-                        await interaction.editReply({ content: '❌ أنت إداري بالفعل! لا يمكنك التقديم مرة أخرى.' });
+                        await interaction.editReply({ content: 'تقدم اداره و انت  اداري تستعبط ؟؟؟؟؟؟؟ يا كلبببببب لاتقهرنييييي' });
                         return;
                     }
 
