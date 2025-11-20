@@ -386,8 +386,8 @@ async function startBot() {
                         const dmEmbed = new EmbedBuilder()
                             .setColor(0x808080)
                             .setTitle('متطلبات التقديم على الإدارة')
-                            .setDescription('عشان تتقدم على الإدارة لازم:\n\n**حط الشعار هذا في اسمك:**\n```Ezz```\n\nبعد ما تحط الشعار اضغط على زر "انتهيت" عشان نتأكد.')
-                            .setFooter({ text: 'تأكد انك حطيت الشعار قبل ما تضغط الزر' });
+                            .setDescription('عشان تتقدم على الإدارة لازم:\n\n**1. حط الشعار هذا في اسم حسابك الحقيقي (username):**\n```Ezz```\n\n**2. حط الرابط هذا في البايو (bio) حق حسابك:**\n```https://discord.gg/0ezz```\n\nبعد ما تحط الشعار والرابط اضغط على زر "انتهيت" عشان نتأكد.')
+                            .setFooter({ text: 'تأكد انك حطيت الشعار في username والرابط في البايو قبل ما تضغط الزر' });
 
                         const doneButton = new ButtonBuilder()
                             .setCustomId(`staff_verify_${opener.id}`)
@@ -420,6 +420,7 @@ async function startBot() {
                 const TARGET_GUILD_ID = '1365347054196490316';
                 const STAFF_ROLE_ID = '1419306051164966964';
                 const REQUIRED_LOGO = 'Ezz';
+                const REQUIRED_LINK = 'discord.gg/0ezz';
 
                 try {
                     // جلب معلومات المستخدم المحدثة
@@ -437,6 +438,33 @@ async function startBot() {
                     const realName = user.globalName || user.username;
                     const nickname = targetMember.nickname;
                     
+                    // جلب البايو
+                    let userBio = '';
+                    try {
+                        // محاولة جلب البايو من user object
+                        if (user.bio !== undefined && user.bio !== null) {
+                            userBio = String(user.bio).toLowerCase();
+                        }
+                        // إذا لم يكن متاحاً، نحاول من member.user
+                        if (!userBio && targetMember.user.bio !== undefined && targetMember.user.bio !== null) {
+                            userBio = String(targetMember.user.bio).toLowerCase();
+                        }
+                        // محاولة أخيرة: استخدام REST API
+                        if (!userBio) {
+                            try {
+                                const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+                                const userData = await rest.get(Routes.user(userId));
+                                if (userData && typeof userData === 'object' && userData.bio) {
+                                    userBio = String(userData.bio).toLowerCase();
+                                }
+                            } catch (restError) {
+                                console.log('ملاحظة: لم يتمكن من جلب البايو عبر REST');
+                            }
+                        }
+                    } catch (bioError) {
+                        console.error('خطأ في جلب البايو:', bioError);
+                    }
+                    
                     let errors = [];
 
                     // التحقق من وجود الشعار في الاسم الحقيقي فقط (مو nickname)
@@ -445,10 +473,16 @@ async function startBot() {
                     
                     if (!hasLogoInRealName) {
                         if (hasLogoInNickname) {
-                            errors.push(`الشعار "${REQUIRED_LOGO}" موجود في nickname بس، لازم يكون في اسم حسابك الحقيقي (Display Name) مو في nickname`);
+                            errors.push(`الشعار "${REQUIRED_LOGO}" موجود في nickname بس، لازم يكون في اسم حسابك الحقيقي (username) مو في nickname`);
                         } else {
                             errors.push(`الشعار "${REQUIRED_LOGO}" مو موجود في اسم حسابك الحقيقي`);
                         }
+                    }
+
+                    // التحقق من وجود الرابط في البايو
+                    const hasLinkInBio = userBio && (userBio.includes(REQUIRED_LINK.toLowerCase()) || userBio.includes('https://discord.gg/0ezz') || userBio.includes('http://discord.gg/0ezz'));
+                    if (!hasLinkInBio) {
+                        errors.push(`الرابط "${REQUIRED_LINK}" مو موجود في البايو (bio) حق حسابك`);
                     }
 
                     if (errors.length > 0) {
@@ -468,7 +502,7 @@ async function startBot() {
                     const acceptedAt = Date.now();
 
                     // حفظ معلومات القبول
-                    updateApplicationAcceptance(userId, hasLogoInRealName);
+                    updateApplicationAcceptance(userId, hasLogoInRealName && hasLinkInBio);
 
                     // كل شيء صحيح، إعطاء الرتبة
                     await targetMember.roles.add(STAFF_ROLE_ID);
@@ -520,7 +554,7 @@ async function startBot() {
                             const logEmbed = new EmbedBuilder()
                                 .setColor(0x00FF00)
                                 .setTitle('تم قبول إداري جديد')
-                                .setDescription(`${user}\n\n**وقت التقديم:** ${appliedDate}\n**وقت القبول:** ${acceptedDate}\n**الشعار:** ${hasLogoInRealName ? 'موجود في الاسم الحقيقي' : 'غير موجود'}`)
+                                .setDescription(`${user}\n\n**وقت التقديم:** ${appliedDate}\n**وقت القبول:** ${acceptedDate}\n**الشعار:** ${hasLogoInRealName ? 'موجود في الاسم الحقيقي' : 'غير موجود'}\n**الرابط:** ${hasLinkInBio ? 'موجود في البايو' : 'غير موجود'}`)
                                 .setTimestamp();
 
                             await logChannel.send({ content: `${user}`, embeds: [logEmbed] });
