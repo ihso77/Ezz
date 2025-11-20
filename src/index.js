@@ -207,14 +207,27 @@ async function startBot() {
             const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
             if (messages) {
                 const panelMsg = messages.find(m => m.author.id === client.user.id && m.components?.some(r => r.components?.some(c => c.customId === 'ticket_select')));
-                if (selectedValue === 'advertisement') {
-                    await createTicket('ads', '1419306155145953400', '1397022492090171392', {
-                        title: '📢 تذكرة إعلان',
-                        image: 'https://media.discordapp.net/attachments/1433832273538711612/1436075334565888010/image.png?ex=690e48e0&is=690cf760&hm=88ebb29ea8c00615c80da44823be56fd7d06367e88e4fb21980e1af0b7f543e0&=&format=webp&quality=lossless&width=963&height=320',
-                        color: 0x808080
-                    });
+                if (panelMsg) {
+                    await panelMsg.edit({ embeds: [embed], components: [row] }).catch(() => {});
                     return;
                 }
+            }
+        } catch {}
+        
+        await channel.send({ embeds: [embed], components: [row] }).catch(() => {});
+    }
+
+    client.on(Events.InteractionCreate, async interaction => {
+        try {
+            if (interaction.isChatInputCommand()) {
+                const command = client.commands.get(interaction.commandName);
+                if (!command) {
+                    console.error(`لم يتم العثور على الأمر /${interaction.commandName} في client.commands.`);
+                    await interaction.reply({ content: 'عفوًا، هذا الأمر غير موجود أو حدث خطأ في تحميله.', ephemeral: true });
+                    return;
+                }
+                await command.execute(interaction);
+                return;
             }
             
             if (interaction.isStringSelectMenu() && interaction.customId === 'advertisement_panel_select') {
@@ -292,19 +305,19 @@ async function startBot() {
                     // التحقق من أن المستخدم في السيرفر المستهدف
                     const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
                     if (!targetGuild) {
-                        await interaction.editReply({ content: '❌ حدث خطأ في الوصول إلى السيرفر المطلوب.' });
+                        await interaction.editReply({ content: 'حدث خطأ في الوصول للسيرفر' });
                         return;
                     }
 
                     const targetMember = await targetGuild.members.fetch(opener.id).catch(() => null);
                     if (!targetMember) {
-                        await interaction.editReply({ content: '❌ يجب أن تكون عضواً في السيرفر للتقديم على الإدارة.' });
+                        await interaction.editReply({ content: 'لازم تكون عضو في السيرفر عشان تتقدم على الإدارة' });
                         return;
                     }
 
                     // التحقق من أنه ليس لديه الرتبة بالفعل
                     if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
-                        await interaction.editReply({ content: '❌ أنت إداري بالفعل! لا يمكنك التقديم مرة أخرى.' });
+                        await interaction.editReply({ content: 'انت اداري اصلا ما تقدر تتقدم مرة ثانية' });
                         return;
                     }
 
@@ -312,22 +325,22 @@ async function startBot() {
                     try {
                         const dmEmbed = new EmbedBuilder()
                             .setColor(0x808080)
-                            .setTitle('📝 متطلبات التقديم على الإدارة')
-                            .setDescription('للتقديم على الإدارة، يجب عليك:\n\n**1️⃣ وضع الشعار التالي في اسم حسابك:**\n```Ezz```\n\n**2️⃣ وضع أحد الكلمات التالية في البايو أو Pronouns:**\n```0ezz```\nأو\n```discord.gg```\n\nبعد الانتهاء من وضع الشعار والرابط، اضغط على زر "✅ انتهيت" للتحقق.')
-                            .setFooter({ text: 'تأكد من إتمام الخطوتين قبل الضغط على الزر' });
+                            .setTitle('متطلبات التقديم على الإدارة')
+                            .setDescription('عشان تتقدم على الإدارة لازم:\n\n**حط الشعار هذا في اسمك:**\n```Ezz```\n\nبعد ما تحط الشعار اضغط على زر "انتهيت" عشان نتأكد.')
+                            .setFooter({ text: 'تأكد انك حطيت الشعار قبل ما تضغط الزر' });
 
                         const doneButton = new ButtonBuilder()
                             .setCustomId(`staff_verify_${opener.id}`)
-                            .setLabel('✅ انتهيت')
+                            .setLabel('انتهيت')
                             .setStyle(ButtonStyle.Success);
 
                         const dmRow = new ActionRowBuilder().addComponents(doneButton);
 
                         await opener.send({ embeds: [dmEmbed], components: [dmRow] });
-                        await interaction.editReply({ content: 'شيكك خاص يا حلو' });
+                        await interaction.editReply({ content: 'شيك خاصك' });
                     } catch (dmError) {
                         console.error('فشل إرسال رسالة خاصة:', dmError);
-                        await interaction.editReply({ content: 'خاصك مقفل او انت عاطيني بلوك 😕 ' });
+                        await interaction.editReply({ content: 'خاصك مقفل او انت عاطيني بلوك' });
                     }
                     return;
                 }
@@ -338,7 +351,7 @@ async function startBot() {
                 const userId = interaction.customId.replace('staff_verify_', '');
                 
                 if (interaction.user.id !== userId) {
-                    await interaction.reply({ content: '❌ هذا الزر ليس لك!', ephemeral: true });
+                    await interaction.reply({ content: 'هذا الزر مو لك', ephemeral: true });
                     return;
                 }
 
@@ -347,44 +360,34 @@ async function startBot() {
                 const TARGET_GUILD_ID = '1365347054196490316';
                 const STAFF_ROLE_ID = '1419306051164966964';
                 const REQUIRED_LOGO = 'Ezz';
-                const REQUIRED_KEYWORDS = ['0ezz', 'discord.gg'];
 
                 try {
                     // جلب معلومات المستخدم المحدثة
                     const targetGuild = await client.guilds.fetch(TARGET_GUILD_ID);
-                    const targetMember = await targetGuild.members.fetch(userId);
+                    const targetMember = await targetGuild.members.fetch(userId, { force: true });
+                    const user = await client.users.fetch(userId, { force: true });
                     
                     // التحقق من أنه لا يملك الرتبة
                     if (targetMember.roles.cache.has(STAFF_ROLE_ID)) {
-                        await interaction.editReply({ content: 'يزم انت اداري اصلا تبي تصير اداري مره ثانيه تستعبط ؟؟' });
+                        await interaction.editReply({ content: 'انت اداري اصلا تبي تصير اداري مرة ثانية' });
                         return;
                     }
 
-                    const userName = targetMember.nickname || targetMember.user.globalName || targetMember.user.username;
-                    const userBio = (targetMember.user.bio || '').toLowerCase();
-                    const userPronouns = (targetMember.user.pronouns || '').toLowerCase();
-
+                    const userName = targetMember.nickname || user.globalName || user.username;
+                    
                     let errors = [];
 
-                    // التحقق من وجود الشعار في الاسم
+                    // التحقق من وجود الشعار في الاسم فقط
                     if (!userName.includes(REQUIRED_LOGO)) {
-                        errors.push(`❌ الشعار "${REQUIRED_LOGO}" غير موجود في اسمك`);
-                    }
-
-                    // التحقق من وجود أي من الكلمات المطلوبة في البايو أو pronouns
-                    const hasKeywordInBio = REQUIRED_KEYWORDS.some(keyword => userBio.includes(keyword));
-                    const hasKeywordInPronouns = REQUIRED_KEYWORDS.some(keyword => userPronouns.includes(keyword));
-
-                    if (!hasKeywordInBio && !hasKeywordInPronouns) {
-                        errors.push(`❌ يجب وضع إحدى الكلمات التالية في البايو أو Pronouns:\n"0ezz" أو "discord.gg"`);
+                        errors.push(`الشعار "${REQUIRED_LOGO}" مو موجود في اسمك`);
                     }
 
                     if (errors.length > 0) {
                         const errorEmbed = new EmbedBuilder()
                             .setColor(0xFF0000)
-                            .setTitle('⚠️ متطلبات ناقصة')
+                            .setTitle('متطلبات ناقصة')
                             .setDescription('**ناقصك:**\n\n' + errors.join('\n\n'))
-                            .setFooter({ text: 'أكمل المتطلبات ثم اضغط الزر مرة أخرى' });
+                            .setFooter({ text: 'اكمل المتطلبات وبعدين اضغط الزر مرة ثانية' });
 
                         await interaction.editReply({ embeds: [errorEmbed] });
                         return;
@@ -395,16 +398,16 @@ async function startBot() {
 
                     const successEmbed = new EmbedBuilder()
                         .setColor(0x00FF00)
-                        .setTitle('🎉 تهانينا!')
-                        .setDescription(`✅ تم قبول طلبك وإعطائك رتبة الإدارة!\n\n**مرحباً بك في فريق الإدارة!**`)
-                        .setFooter({ text: 'نتمنى لك التوفيق في مهامك الإدارية' });
+                        .setTitle('تم القبول')
+                        .setDescription(`تم قبول طلبك واعطائك رتبة الإدارة\n\nمرحبا بك في فريق الإدارة`)
+                        .setFooter({ text: 'نتمنى لك التوفيق' });
 
                     await interaction.editReply({ embeds: [successEmbed] });
 
                     // تعطيل الزر بعد النجاح
                     const disabledButton = new ButtonBuilder()
                         .setCustomId('staff_verify_done')
-                        .setLabel('✅ تم القبول')
+                        .setLabel('تم القبول')
                         .setStyle(ButtonStyle.Success)
                         .setDisabled(true);
 
@@ -413,12 +416,83 @@ async function startBot() {
 
                 } catch (error) {
                     console.error('خطأ في التحقق من التقديم:', error);
-                    await interaction.editReply({ content: '❌ حدث خطأ أثناء التحقق. حاول مرة أخرى لاحقاً.' });
+                    await interaction.editReply({ content: 'حدث خطأ اثناء التحقق. حاول مرة ثانية بعدين' });
                 }
             }
             // =================================================================================
             // --- نهاية نظام التقديم على الإدارة ---
             // =================================================================================
+
+            if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select') {
+                const guild = interaction.guild;
+                const opener = interaction.user;
+                const selectedValue = interaction.values[0];
+
+                if (selectedValue === 'reset_menu') {
+                    await interaction.deferUpdate();
+                    return;
+                }
+                
+                async function createTicket(type, roleId, categoryId, embedDetails) {
+                    await interaction.deferReply({ ephemeral: true });
+                    
+                    const channelName = `${type}-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
+                    
+                    const existingChannel = guild.channels.cache.find(ch => ch.name === channelName && ch.parentId === categoryId);
+                    if (existingChannel) {
+                        await interaction.editReply({ content: `لديك بالفعل تذكرة من هذا النوع مفتوحة: ${existingChannel}` });
+                        return;
+                    }
+
+                    const targetRole = guild.roles.cache.get(roleId);
+                    const permissionOverwrites = [
+                        { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
+                        { id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                        ...(targetRole ? [{ id: targetRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : [{ id: roleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }]),
+                    ];
+
+                    const ticketChannel = await guild.channels.create({
+                        name: channelName,
+                        type: ChannelType.GuildText,
+                        parent: categoryId,
+                        permissionOverwrites,
+                        reason: `Ticket opened by ${opener.tag} (${type})`,
+                    });
+
+                    const infoEmbed = new EmbedBuilder()
+                        .setColor(embedDetails.color || 0x808080)
+                        .setTitle(embedDetails.title)
+                        .setImage(embedDetails.image)
+                        .setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
+                    
+                    const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
+                    const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('استلام').setStyle(ButtonStyle.Primary);
+                    const row = new ActionRowBuilder().addComponents(claimBtn, closeBtn);
+                    
+                    const mentionText = targetRole ? `${targetRole}` : `<@&${roleId}>`;
+                    await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
+                    
+                    await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
+                }
+
+                if (selectedValue === 'support') {
+                    await createTicket('ticket', '1419306051164966964', '1397022492090171392', {
+                        title: 'الرجاء انتظار الدعم الفني',
+                        image: 'https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933',
+                        color: 0x808080
+                    });
+                    return;
+                }
+                
+                if (selectedValue === 'reward') {
+                    await createTicket('reward', '1419306155145953400', '1397022492090171392', {
+                        title: 'تذكرة الريوارد',
+                        image: 'https://media.discordapp.net/attachments/1433832273538711612/1434112148648235118/Picsart_25-10-16_13-18-43-513.jpg?ex=69072484&is=6905d304&hm=f2f1f426cdbf67c07f95db5e9d0339d476110baba8bd10fc40ea4c686e905b80&=&format=webp&width=2615&height=872',
+                        color: 0x808080
+                    });
+                    return;
+                }
+            }
 
             if (interaction.isButton() && interaction.customId === 'ticket_claim') {
                 const member = interaction.member;
@@ -543,19 +617,6 @@ async function startBot() {
             }
         }
     });
-
-    client.login(process.env.DISCORD_TOKEN);
-}
-
-startBot(); (panelMsg) {
-                    await panelMsg.edit({ embeds: [embed], components: [row] }).catch(() => {});
-                    return;
-                }
-            }
-        } catch {}
-        
-        await channel.send({ embeds: [embed], components: [row] }).catch(() => {});
-    }
 
     async function refreshStaffApplicationPanel(channelId) {
         if (!channelId) return;
@@ -689,87 +750,10 @@ startBot(); (panelMsg) {
     // --- نهاية نظام الردود التلقائية ---
     // =================================================================================
 
-    client.on(Events.InteractionCreate, async interaction => {
-        try {
-            if (interaction.isChatInputCommand()) {
-                const command = client.commands.get(interaction.commandName);
-                if (!command) {
-                    console.error(`لم يتم العثور على الأمر /${interaction.commandName} في client.commands.`);
-                    await interaction.reply({ content: 'عفوًا، هذا الأمر غير موجود أو حدث خطأ في تحميله.', ephemeral: true });
-                    return;
-                }
-                await command.execute(interaction);
-                return;
-            }
-            
-            if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select') {
-                const guild = interaction.guild;
-                const opener = interaction.user;
-                const selectedValue = interaction.values[0];
+    // معالجة ticket_select (تم دمجها مع المعالج الأول)
+    // الكود موجود بالفعل في المعالج الأول
 
-                if (selectedValue === 'reset_menu') {
-                    await interaction.deferUpdate();
-                    return;
-                }
-                
-                async function createTicket(type, roleId, categoryId, embedDetails) {
-                    await interaction.deferReply({ ephemeral: true });
-                    
-                    const channelName = `${type}-${opener.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 90);
-                    
-                    const existingChannel = guild.channels.cache.find(ch => ch.name === channelName && ch.parentId === categoryId);
-                    if (existingChannel) {
-                        await interaction.editReply({ content: `لديك بالفعل تذكرة من هذا النوع مفتوحة: ${existingChannel}` });
-                        return;
-                    }
+    client.login(process.env.DISCORD_TOKEN);
+}
 
-                    const targetRole = guild.roles.cache.get(roleId);
-                    const permissionOverwrites = [
-                        { id: guild.roles.everyone, deny: [PermissionFlagsBits.ViewChannel] },
-                        { id: opener.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                        ...(targetRole ? [{ id: targetRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }] : [{ id: roleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }]),
-                    ];
-
-                    const ticketChannel = await guild.channels.create({
-                        name: channelName,
-                        type: ChannelType.GuildText,
-                        parent: categoryId,
-                        permissionOverwrites,
-                        reason: `Ticket opened by ${opener.tag} (${type})`,
-                    });
-
-                    const infoEmbed = new EmbedBuilder()
-                        .setColor(embedDetails.color || 0x808080)
-                        .setTitle(embedDetails.title)
-                        .setImage(embedDetails.image)
-                        .setDescription(`${opener} تم فتح تذكرتك بنجاح.`);
-                    
-                    const closeBtn = new ButtonBuilder().setCustomId('ticket_close').setLabel('حذف التيكيت').setStyle(ButtonStyle.Danger);
-                    const claimBtn = new ButtonBuilder().setCustomId('ticket_claim').setLabel('استلام').setStyle(ButtonStyle.Primary);
-                    const row = new ActionRowBuilder().addComponents(claimBtn, closeBtn);
-                    
-                    const mentionText = targetRole ? `${targetRole}` : `<@&${roleId}>`;
-                    await ticketChannel.send({ content: `${mentionText}\n${opener}`, embeds: [infoEmbed], components: [row] });
-                    
-                    await interaction.editReply({ content: `تم إنشاء تذكرتك: ${ticketChannel}` });
-                }
-
-                if (selectedValue === 'support') {
-                    await createTicket('ticket', '1419306051164966964', '1397022492090171392', {
-                        title: 'الرجاء انتظار الدعم الفني',
-                        image: 'https://media.discordapp.net/attachments/1397093949071687700/1433739302856294461/Picsart_25-10-16_13-18-43-513.jpg?ex=6905c947&is=690477c7&hm=cc9c64f687d99cf07fc18e898d1eaaf70f27b472a0fe9901069c9be26cd69f9e&=&format=webp&width=2797&height=933',
-                        color: 0x808080
-                    });
-                    return;
-                }
-                
-                if (selectedValue === 'reward') {
-                    await createTicket('reward', '1419306155145953400', '1397022492090171392', {
-                        title: 'تذكرة الريوارد',
-                        image: 'https://media.discordapp.net/attachments/1433832273538711612/1434112148648235118/Picsart_25-10-16_13-18-43-513.jpg?ex=69072484&is=6905d304&hm=f2f1f426cdbf67c07f95db5e9d0339d476110baba8bd10fc40ea4c686e905b80&=&format=webp&width=2615&height=872',
-                        color: 0x808080
-                    });
-                    return;
-                }
-
-                if
+startBot();
