@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
-import { addWarning } from '../../utils/warningsStore.js';
+import { addWarning } from '../utils/warningsStore.js';
 
 export default {
 	data: new SlashCommandBuilder()
