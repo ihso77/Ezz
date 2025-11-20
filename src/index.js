@@ -438,33 +438,57 @@ async function startBot() {
                     const realName = user.globalName || user.username;
                     const nickname = targetMember.nickname;
                     
-                    // جلب البايو باستخدام REST API (الطريقة الوحيدة الموثوقة)
+                    // جلب البايو باستخدام REST API مع محاولات متعددة
                     let userBio = '';
-                    try {
-                        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-                        const userData = await rest.get(Routes.user(userId));
-                        
-                        if (userData && typeof userData === 'object') {
-                            // البايو موجود في userData.bio
-                            if (userData.bio) {
-                                userBio = String(userData.bio).toLowerCase().trim();
-                                console.log(`[فحص البايو] تم جلب البايو للمستخدم ${userId} (${userBio.length} حرف): ${userBio.substring(0, 100)}...`);
-                            } else {
-                                console.log(`[فحص البايو] البايو فارغ للمستخدم ${userId}`);
-                            }
-                        } else {
-                            console.log(`[فحص البايو] لم يتم جلب بيانات المستخدم بشكل صحيح`);
-                        }
-                    } catch (restError) {
-                        console.error('[فحص البايو] خطأ في جلب البايو عبر REST:', restError.message || restError);
-                        // محاولة بديلة من user object (نادراً ما تعمل)
+                    const maxAttempts = 3;
+                    const delayBetweenAttempts = 2000; // 2 ثانية بين كل محاولة
+                    
+                    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                         try {
-                            if (user.bio !== undefined && user.bio !== null) {
-                                userBio = String(user.bio).toLowerCase().trim();
-                                console.log(`[فحص البايو] تم جلب البايو من user object: ${userBio.substring(0, 50)}...`);
+                            console.log(`[فحص البايو] محاولة ${attempt}/${maxAttempts} لجلب البايو للمستخدم ${userId}...`);
+                            
+                            const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+                            const userData = await rest.get(Routes.user(userId));
+                            
+                            if (userData && typeof userData === 'object') {
+                                // البايو موجود في userData.bio
+                                if (userData.bio) {
+                                    userBio = String(userData.bio).toLowerCase().trim();
+                                    console.log(`[فحص البايو] ✅ تم جلب البايو بنجاح في المحاولة ${attempt}`);
+                                    console.log(`[فحص البايو] طول البايو: ${userBio.length} حرف`);
+                                    console.log(`[فحص البايو] ========== البايو الكامل ==========`);
+                                    console.log(userBio);
+                                    console.log(`[فحص البايو] ==================================`);
+                                    break; // نجحنا، نخرج من الحلقة
+                                } else {
+                                    console.log(`[فحص البايو] البايو فارغ في المحاولة ${attempt}`);
+                                }
+                            } else {
+                                console.log(`[فحص البايو] لم يتم جلب بيانات المستخدم بشكل صحيح في المحاولة ${attempt}`);
                             }
-                        } catch (fallbackError) {
-                            console.error('[فحص البايو] خطأ في جلب البايو من user object:', fallbackError);
+                        } catch (restError) {
+                            console.error(`[فحص البايو] خطأ في المحاولة ${attempt}:`, restError.message || restError);
+                            
+                            // إذا كانت المحاولة الأخيرة، نجرب user object
+                            if (attempt === maxAttempts) {
+                                try {
+                                    if (user.bio !== undefined && user.bio !== null) {
+                                        userBio = String(user.bio).toLowerCase().trim();
+                                        console.log(`[فحص البايو] تم جلب البايو من user object كبديل`);
+                                        console.log(`[فحص البايو] ========== البايو الكامل ==========`);
+                                        console.log(userBio);
+                                        console.log(`[فحص البايو] ==================================`);
+                                    }
+                                } catch (fallbackError) {
+                                    console.error('[فحص البايو] خطأ في جلب البايو من user object:', fallbackError);
+                                }
+                            }
+                        }
+                        
+                        // انتظار قبل المحاولة التالية (ما عدا المحاولة الأخيرة)
+                        if (attempt < maxAttempts && !userBio) {
+                            console.log(`[فحص البايو] انتظار ${delayBetweenAttempts}ms قبل المحاولة التالية...`);
+                            await new Promise(resolve => setTimeout(resolve, delayBetweenAttempts));
                         }
                     }
                     
@@ -482,7 +506,7 @@ async function startBot() {
                         }
                     }
 
-                    // التحقق من وجود الرابط في البايو (فحص شامل لجميع الصيغ الممكنة)
+                    // التحقق من وجود الرابط في البايو (فحص شامل جداً)
                     const linkVariations = [
                         'discord.gg/0ezz',
                         'https://discord.gg/0ezz',
@@ -490,25 +514,52 @@ async function startBot() {
                         'discord.com/invite/0ezz',
                         'https://discord.com/invite/0ezz',
                         'http://discord.com/invite/0ezz',
-                        'discord.gg/0ezz', // بدون https
-                        'discord.com/0ezz' // صيغة بديلة
+                        'discord.com/0ezz',
+                        'www.discord.gg/0ezz',
+                        'www.discord.com/0ezz',
+                        '0ezz' // البحث عن الكلمة نفسها حتى لو بدون discord.gg
                     ];
                     
                     // تنظيف البايو من المسافات الزائدة والأحرف الخاصة
                     const cleanBio = userBio ? userBio.replace(/\s+/g, ' ').trim() : '';
                     
-                    // فحص شامل - نبحث عن أي صيغة من الرابط
+                    console.log(`[فحص البايو] بدء فحص شامل للرابط...`);
+                    console.log(`[فحص البايو] البايو بعد التنظيف (${cleanBio.length} حرف): "${cleanBio}"`);
+                    
+                    // فحص شامل - نبحث عن أي صيغة من الرابط أو حتى كلمة 0ezz
                     let hasLinkInBio = false;
                     let foundLink = '';
                     
                     if (cleanBio) {
+                        // فحص شامل لكل الصيغ
                         for (const link of linkVariations) {
                             const searchLink = link.toLowerCase();
                             if (cleanBio.includes(searchLink)) {
                                 hasLinkInBio = true;
                                 foundLink = link;
-                                console.log(`[فحص البايو] ✅ تم العثور على الرابط بصيغة: ${link}`);
+                                console.log(`[فحص البايو] ✅ تم العثور على الرابط/الكلمة بصيغة: "${link}"`);
                                 break;
+                            }
+                        }
+                        
+                        // فحص إضافي: البحث عن "0ezz" حتى لو كانت جزء من كلمة أخرى
+                        if (!hasLinkInBio) {
+                            const zeroezzIndex = cleanBio.indexOf('0ezz');
+                            if (zeroezzIndex !== -1) {
+                                hasLinkInBio = true;
+                                foundLink = '0ezz (موجود في البايو)';
+                                console.log(`[فحص البايو] ✅ تم العثور على "0ezz" في البايو في الموضع ${zeroezzIndex}`);
+                            }
+                        }
+                        
+                        // فحص إضافي: البحث عن "discord" و "0ezz" منفصلين
+                        if (!hasLinkInBio) {
+                            const hasDiscord = cleanBio.includes('discord');
+                            const hasZeroezz = cleanBio.includes('0ezz');
+                            if (hasDiscord && hasZeroezz) {
+                                hasLinkInBio = true;
+                                foundLink = 'discord + 0ezz (موجودان منفصلين)';
+                                console.log(`[فحص البايو] ✅ تم العثور على "discord" و "0ezz" في البايو`);
                             }
                         }
                     }
@@ -516,10 +567,12 @@ async function startBot() {
                     if (!cleanBio || cleanBio.trim() === '') {
                         errors.push(`البايو (bio) حق حسابك فارغ. لازم تحط الرابط "${REQUIRED_LINK}" في البايو`);
                     } else if (!hasLinkInBio) {
-                        console.log(`[فحص البايو] ❌ الرابط غير موجود. البايو الحالي (${cleanBio.length} حرف): "${cleanBio.substring(0, 200)}"`);
-                        errors.push(`الرابط "${REQUIRED_LINK}" مو موجود في البايو (bio) حق حسابك`);
+                        console.log(`[فحص البايو] ❌ الرابط غير موجود بعد فحص شامل`);
+                        console.log(`[فحص البايو] البايو الكامل للفحص:`);
+                        console.log(JSON.stringify(cleanBio));
+                        errors.push(`الرابط "${REQUIRED_LINK}" مو موجود في البايو (bio) حق حسابك\n\nالبايو الحالي: ${cleanBio.length > 300 ? cleanBio.substring(0, 300) + '...' : cleanBio}`);
                     } else {
-                        console.log(`[فحص البايو] ✅ تم العثور على الرابط "${foundLink}" في البايو للمستخدم ${userId}`);
+                        console.log(`[فحص البايو] ✅ تم العثور على الرابط/الكلمة "${foundLink}" في البايو للمستخدم ${userId}`);
                     }
 
                     if (errors.length > 0) {
@@ -919,11 +972,8 @@ async function startBot() {
                 return;
             }
 
-            // الرد على كلمة "فراغ"
             if (messageContent === 'فراغ') {
-                // حذف رسالة المستخدم أولاً
                 await message.delete().catch(err => console.error('فشل حذف رسالة "فراغ":', err));
-                // إرسال الرد
                 await message.channel.send(FARAGH_REPLY);
                 return;
             }
@@ -932,13 +982,7 @@ async function startBot() {
             console.error('خطأ في نظام الردود التلقائية:', error);
         }
     });
-    // =================================================================================
-    // --- نهاية نظام الردود التلقائية ---
-    // =================================================================================
-
-    // معالجة ticket_select (تم دمجها مع المعالج الأول)
-    // الكود موجود بالفعل في المعالج الأول
-
+   
     client.login(process.env.DISCORD_TOKEN);
 }
 
