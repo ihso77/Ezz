@@ -445,7 +445,7 @@ async function startBot() {
                     
                     if (!hasLogoInRealName) {
                         if (hasLogoInNickname) {
-                            errors.push(`الشعار "${REQUIRED_LOGO}" موجود في nickname بس، لازم يكون في اسم حسابك الحقيقي (username) مو في nickname`);
+                            errors.push(`الشعار "${REQUIRED_LOGO}" موجود في nickname بس، لازم يكون في اسم حسابك الحقيقي (Display Name) مو في nickname`);
                         } else {
                             errors.push(`الشعار "${REQUIRED_LOGO}" مو موجود في اسم حسابك الحقيقي`);
                         }
