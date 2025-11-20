@@ -51,6 +51,63 @@ function incrementClaimCount(adminId) {
 // =================================================================================
 
 // =================================================================================
+// --- وظائف إدارة ملف staffApplications.json ---
+// =================================================================================
+
+const staffApplicationsFilePath = path.join(__dirname, 'staffApplications.json');
+
+// التأكد من وجود ملف staffApplications.json عند بدء التشغيل
+if (!existsSync(staffApplicationsFilePath)) {
+    console.log('[إعداد] ملف staffApplications.json غير موجود، سيتم إنشاؤه.');
+    writeFileSync(staffApplicationsFilePath, JSON.stringify({}));
+}
+
+function readStaffApplications() {
+    try {
+        const data = readFileSync(staffApplicationsFilePath, 'utf8');
+        return data ? JSON.parse(data) : {};
+    } catch (error) {
+        console.error('خطأ في قراءة ملف staffApplications.json:', error);
+        return {};
+    }
+}
+
+function writeStaffApplications(data) {
+    try {
+        writeFileSync(staffApplicationsFilePath, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('خطأ في كتابة ملف staffApplications.json:', error);
+    }
+}
+
+function saveApplicationTime(userId) {
+    const applications = readStaffApplications();
+    if (!applications[userId]) {
+        applications[userId] = {
+            appliedAt: Date.now(),
+            acceptedAt: null,
+            hasLogo: false
+        };
+        writeStaffApplications(applications);
+    }
+    return applications[userId];
+}
+
+function updateApplicationAcceptance(userId, hasLogo) {
+    const applications = readStaffApplications();
+    if (applications[userId]) {
+        applications[userId].acceptedAt = Date.now();
+        applications[userId].hasLogo = hasLogo;
+        writeStaffApplications(applications);
+    }
+    return applications[userId];
+}
+
+// =================================================================================
+// --- نهاية وظائف إدارة ملف staffApplications.json ---
+// =================================================================================
+
+// =================================================================================
 // --- إعدادات الردود التلقائية ---
 // =================================================================================
 
@@ -321,6 +378,9 @@ async function startBot() {
                         return;
                     }
 
+                    // حفظ وقت التقديم
+                    saveApplicationTime(opener.id);
+
                     // إرسال رسالة خاصة للمستخدم
                     try {
                         const dmEmbed = new EmbedBuilder()
@@ -378,7 +438,8 @@ async function startBot() {
                     let errors = [];
 
                     // التحقق من وجود الشعار في الاسم فقط
-                    if (!userName.includes(REQUIRED_LOGO)) {
+                    const hasLogo = userName.includes(REQUIRED_LOGO);
+                    if (!hasLogo) {
                         errors.push(`الشعار "${REQUIRED_LOGO}" مو موجود في اسمك`);
                     }
 
@@ -393,13 +454,21 @@ async function startBot() {
                         return;
                     }
 
+                    // جلب معلومات التقديم
+                    const applicationInfo = readStaffApplications()[userId];
+                    const appliedAt = applicationInfo?.appliedAt || Date.now();
+                    const acceptedAt = Date.now();
+
+                    // حفظ معلومات القبول
+                    updateApplicationAcceptance(userId, hasLogo);
+
                     // كل شيء صحيح، إعطاء الرتبة
                     await targetMember.roles.add(STAFF_ROLE_ID);
 
                     const successEmbed = new EmbedBuilder()
                         .setColor(0x00FF00)
                         .setTitle('تم القبول')
-                        .setDescription(`تم قبولك\n\nنورت فريق الإدارة`)
+                        .setDescription(`تم قبول طلبك واعطائك رتبة الإدارة\n\nمرحبا بك في فريق الإدارة`)
                         .setFooter({ text: 'نتمنى لك التوفيق' });
 
                     await interaction.editReply({ embeds: [successEmbed] });
@@ -413,6 +482,44 @@ async function startBot() {
 
                     const disabledRow = new ActionRowBuilder().addComponents(disabledButton);
                     await interaction.message.edit({ components: [disabledRow] });
+
+                    // إرسال رسالة في القناة المحددة
+                    try {
+                        const LOG_CHANNEL_ID = '1441073379011592262';
+                        const logChannel = await client.channels.fetch(LOG_CHANNEL_ID).catch(() => null);
+                        
+                        if (logChannel) {
+                            const appliedDate = new Date(appliedAt).toLocaleString('ar-SA', { 
+                                timeZone: 'Asia/Riyadh',
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                            });
+                            
+                            const acceptedDate = new Date(acceptedAt).toLocaleString('ar-SA', { 
+                                timeZone: 'Asia/Riyadh',
+                                year: 'numeric',
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                            });
+
+                            const logEmbed = new EmbedBuilder()
+                                .setColor(0x00FF00)
+                                .setTitle('تم قبول إداري جديد')
+                                .setDescription(`${user}\n\n**وقت التقديم:** ${appliedDate}\n**وقت القبول:** ${acceptedDate}\n**الشعار:** ${hasLogo ? 'موجود' : 'غير موجود'}`)
+                                .setTimestamp();
+
+                            await logChannel.send({ content: `${user}`, embeds: [logEmbed] });
+                        }
+                    } catch (logError) {
+                        console.error('خطأ في إرسال رسالة القبول:', logError);
+                    }
 
                 } catch (error) {
                     console.error('خطأ في التحقق من التقديم:', error);
